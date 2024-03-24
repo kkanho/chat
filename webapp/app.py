@@ -32,7 +32,21 @@ from flask_mysqldb import MySQL
 from flask_session import Session
 import yaml
 
+import requests
+import hashlib
+from zxcvbn import zxcvbn
+from flask_bcrypt import bcrypt
+import time
+# import pyotp
+# import qrcode
+import base64
+# from io import BytesIO
+
 app = Flask(__name__)
+
+app.config.update(
+    TEMPLATES_AUTO_RELOAD = True
+)
 
 # Configure secret key and Flask-Session
 app.config['SECRET_KEY'] = 'your_secret_key_here'
@@ -98,37 +112,109 @@ def fetch_messages():
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    if 'user_id' in session:
+        return redirect(url_for('index'))
     error = None
     if request.method == 'POST':
         userDetails = request.form
         username = userDetails['username']
         password = userDetails['password']
-        # Check if account already exists
+
+        # Checking
+        if username is None or password is None:
+            error = 'Please enter username and password!'
+            return render_template('signup.html', error=error)
+
+        
         cur = mysql.connection.cursor()
-        try:
-            cur.execute("SELECT username FROM users WHERE username=%s", (username))
-            account = cur.fetchone()
-            if account:
-                error = 'Error! Account already exists'
-            else: # Create a new account
-                cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password,))
-                mysql.connection.commit()
-                return render_template('login.html')
-            cur.close()
-        except:
-            pass
+        cur.execute("SELECT username FROM users WHERE username=%s", (username,))
+        account = cur.fetchone()
+        if account:
+            error = 'Username already been taken!'
+            return render_template('signup.html', error=error)
+        
+        # check password length
+        if len(password) < 8:
+            error = 'Password length must be at least 8!'
+            return render_template('signup.html', error=error)
+        
+        # check password have been pwned
+        sha_password = hashlib.sha1(password.encode()).hexdigest()
+        url = "https://api.pwnedpasswords.com/range/" + sha_password[0:5]
+        response = requests.request("GET", url)
+        pwned_dict = {}
+        pwned_passwords = response.text.split("\r\n")
+        for pwned_password in pwned_passwords:
+            pwned_hashes = pwned_password.split(":")
+            pwned_dict[pwned_hashes[0]] = pwned_hashes[1]
+
+        if sha_password[5:].upper() in pwned_dict.keys():
+            error = 'Password previously exposed in data breaches, try another password!'
+            return render_template('signup.html', error=error)
+        
+
+        # check password strength (zxcvbn)
+        results = zxcvbn(password, user_inputs=[password, username],)
+        if (results["guesses"] < 500):
+            error = 'Password weak, try another password!'
+            return render_template('signup.html', error=error)
+
+        # Hash the password
+        salt = bcrypt.gensalt(15)
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+
+        cur.execute("INSERT INTO users (username, hashed_password, salt) VALUES (%s, %s, %s)", (username, hashed_password, salt,))
+        mysql.connection.commit()
+        cur.close()
+        flash('Sign up successfully. Please login', 'info')
+        return render_template('login.html')
+
     return render_template('signup.html', error=error)
+
+
+            # Create a new account
+            # pop up a modal notification (Google Authenticator OTP)
+
+            # mfa_key =  pytotp.random_base32()
+            # uri = pytotp.totp.TOTP(mfa_key).provisioning_uri(name=username, issuer_name="group-39.comp3334.xavier2dc.fr")
+            # generatedQrCode = qrcode.make(uri)
+            # buf = BytesIO()
+            # generatedQrCode.save(buf, format="PNG")
+            # qrCode = f"data:image/png;bas64,{base64.b64encode(buf.getvalue()).decode()}"
+            # flash(qrCode)
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'user_id' in session:
+        return redirect(url_for('index'))
     error = None
     if request.method == 'POST':
         userDetails = request.form
         username = userDetails['username']
         password = userDetails['password']
+        
+        if username is None or password is None:
+            error = 'Please enter username and password!'
+            return render_template('signup.html', error=error)
+        
+        # find the user's salt
         cur = mysql.connection.cursor()
-        cur.execute("SELECT user_id FROM users WHERE username=%s AND password=%s", (username, password,))
+        cur.execute("SELECT salt FROM users WHERE username=%s", (username,))
+        salt = cur.fetchone()
+        if not salt:
+            time.sleep(5)
+            error = 'Invalid credentials'
+            return render_template('login.html', error=error)
+
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bytes(''.join(str(s) for s in salt), 'utf-8'))
+
+        # verify the password
+        if not bcrypt.checkpw(password.encode('utf-8'), hashed_password):
+            error = 'Invalid credentials'
+            return render_template('login.html', error=error)
+        
+        cur.execute("SELECT user_id FROM users WHERE username=%s AND hashed_password=%s", (username, hashed_password,))
         account = cur.fetchone()
         if account:
             session['username'] = username
@@ -136,6 +222,7 @@ def login():
             return redirect(url_for('index'))
         else:
             error = 'Invalid credentials'
+
     return render_template('login.html', error=error)
 
 @app.route('/forgotPassword', methods=['GET', 'POST'])

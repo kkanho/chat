@@ -1,34 +1,63 @@
 {% extends "base.html" %}
 {% block title %}Sign Up{% endblock %}
 {% block body %}
-
+    <!-- {% with qrCode = get_flashed_messages() %}
+    {% if qrCode %}
+        <dialog data-modal class="modal">
+            <h3>Your QR code for 2MF</h3>
+            <div>
+                <img src="{{ qrCode }}" />
+            </div>
+            <button data-close-modal>Close</button>
+        </dialog>
+        <script type="text/javascript">
+            modal = document.querySelector("[data-modal]")
+            modal.showModal()
+            closeBtn = document.querySelector("[data-close-modal]")
+            closeBtn.addEventListener("click", () => {
+                modal.close()
+            })
+        </script>
+    {% endif %}
+    {% endwith %} -->
     <div class="signup-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
+            <div class="alert alert-{{ category }} d-flex align-items-center" role="info">
+                <svg class="bi flex-shrink-0 me-2" role="img" aria-label="Info:"><use xlink:href="#info-fill"/></svg>
+                <div>{{ message }}</div>
+            </div>
             {% endfor %}
         {% endif %}
         {% endwith %}
-        <h2 class="text-center">Sign Up</h2>
+
         {% if error %}
-            <div class="alert alert-danger">{{ error }}</div>
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <svg class="bi flex-shrink-0 me-2" role="img" aria-label="Danger:"><use xlink:href="#exclamation-triangle-fill"></use></svg>
+                <div>{{ error }}</div>
+            </div>
         {% endif %}
+        <div class="container d-flex justify-content-center align-items-center mb-3">
+            <i class="signUpIcon bi bi-person-fill-add rounded-circle d-flex justify-content-center align-items-center"></i>
+        </div>
+        <h2 class="text-center mb-5">Sign Up</h2>
         <form action="/signup" method="post">
-            <div class="form-group">
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
                 <label for="username">Username</label>
-                <input type="text" class="form-control" id="username" name="username" required>
             </div>
-            <div class="form-group">
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password" name="password" placeholder="password" required>
                 <label for="password">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            <div class="text-center">
-                <button type="submit" class="btn btn-outline-primary rounded-pill w-100">Sign up</button>
+            <div class="text-center mb-3 d-flex justify-content-end">
+                <button type="submit" class="btn btn-lg btn-outline-primary w-50">Sign up</button>
             </div>
         </form>
-        <div class="container">
-            <span>Have an account?</span>&nbsp;<a href="{{ url_for('login') }}">Login</a>
+        <div class="container d-flex flex-column align-items-center pt-4">
+            <div class="opacity-75 mb-1">Already have an account?</div>
+            <a class="btn btn-outline-secondary w-25" href="{{ url_for('login') }}">Login</a>
         </div>
     </div>
 
