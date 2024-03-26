@@ -47,9 +47,17 @@
                 <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
                 <label for="username">Username</label>
             </div>
-            <div class="form-floating mb-3">
+            <div class="form-floating mb-3 position-relative">
                 <input type="password" class="form-control" id="password" name="password" placeholder="password" required>
                 <label for="password">Password</label>
+                <div class="showPasswordIcons">
+                    <i class="bi bi-eye" id="showPassword"></i>
+                    <i class="bi bi-eye-slash" id="hidePassword"></i>
+                </div>
+                <div class="progress" role="progressbar">
+                    <div class="progress-bar"></div>
+                </div>
+                <div class="score-label position-absolute"></div>
             </div>
             <div class="text-center mb-3 d-flex justify-content-end">
                 <button type="submit" class="btn btn-lg btn-outline-primary w-50">Sign up</button>
@@ -60,5 +68,51 @@
             <a class="btn btn-outline-secondary w-25" href="{{ url_for('login') }}">Login</a>
         </div>
     </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.min.js"></script>
+    <script type="text/javascript">
+
+        // Show/hide Password
+        $("#showPassword").on("click", function() {
+            $("#password").prop("type", "password")
+            $("#showPassword").hide()
+            $("#hidePassword").show()
+        }) 
+        $("#hidePassword").on("click", function() {
+            $("#password").prop("type", "text")
+            $("#hidePassword").hide()
+            $("#showPassword").show()
+        }) 
+
+
+        // Password strength bar
+        $("#password").on("input", function() {
+            const username = $("#username").val()
+            const input = $(this).val()
+
+            barWidth = zxcvbn(input, [username]).score * 100 / 4 //(0%, 25%, 50%, 75%, 100%)
+
+            // console.log(zxcvbn(input, [username]))
+
+            $(".progress-bar").css("width", `${(barWidth < 25)? "4%" : barWidth * 4}`)
+            $(".progress-bar").css("background-color", `${
+                (barWidth < 25)? "grey":
+                (barWidth < 50)? "red" : 
+                (barWidth < 75)? "orange" : 
+                (barWidth < 100)? "yellowgreen" : "green"}`)
+
+            $(".score-label").text(`${(barWidth < 25)? "very weak": 
+                (barWidth < 50)? "weak" : 
+                (barWidth < 75)? "fair" : 
+                (barWidth < 100)? "better" : "excellent"}`)
+            $(".score-label").css("color", `${
+                (barWidth < 25)? "grey": 
+                (barWidth < 50)? "red" : 
+                (barWidth < 75)? "orange" : 
+                (barWidth < 100)? "yellowgreen" : "green"}`)
+        })
+
+    </script>
 
 {% endblock %}

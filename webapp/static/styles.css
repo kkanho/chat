@@ -132,3 +132,23 @@ svg {
     padding-left: 30px;
     padding-right: 30px;
 }
+
+.showPasswordIcons {
+    position: relative;
+}
+
+#showPassword, #hidePassword {
+    cursor: pointer;
+    position: absolute;
+    bottom: 10px;
+    left: 360px;
+    font-size: 24px;
+}
+
+#showPassword{
+    display: none;
+}
+
+.progress {
+    max-height: 5px;
+}

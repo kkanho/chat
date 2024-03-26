@@ -152,10 +152,9 @@ def signup():
             error = 'Password previously exposed in data breaches, try another password!'
             return render_template('signup.html', error=error)
         
-
         # check password strength (zxcvbn)
-        results = zxcvbn(password, user_inputs=[password, username],)
-        if (results["guesses"] < 500):
+        results = zxcvbn(password, user_inputs=[username],)
+        if (results["score"] < 3):
             error = 'Password weak, try another password!'
             return render_template('signup.html', error=error)
 
