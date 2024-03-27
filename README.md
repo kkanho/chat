@@ -36,6 +36,7 @@ docker-compose up --build
 - [ ] OTP bind to new account when registration
 - [ ] Implement proper session binding requirements
 - [ ] Provide a way to change authenticators after account registration
+
 ### Part 2 - E2EE chat
 - [ ] ECDH key exchange - establish a shared secret between two users
 - [ ] Underlying curve - P-384
@@ -53,10 +54,12 @@ docker-compose up --build
 - [ ] Protected against CSRF or XSS or SQL injection
 
 ### Part 3 - TLS
-- [x] Communications encrypted - protect data in transit  with TLS
+- [x] Communications encrypted - protect data in transit  with TLSv1.3
 
 To use TLS in your own browser, set the root CA(COMP3334 Project Root CA 2024) to always trust
 
+- ![image](https://github.com/kkanho/chat/assets/97432128/3fa19122-46fa-4463-bc2a-c8f991a7bd00)
+- ![image](https://github.com/kkanho/chat/assets/97432128/b23cf8de-8785-46b3-b782-c267608d87ca)
 
 ### Webapp (Front-end)
 - [x] Ability to sign up, login and logout
