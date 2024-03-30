@@ -37,10 +37,11 @@ import hashlib
 from zxcvbn import zxcvbn
 from flask_bcrypt import bcrypt
 import time
-# import pyotp
-# import qrcode
+
+import pyotp
+import qrcode
 import base64
-# from io import BytesIO
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -115,6 +116,7 @@ def signup():
     if 'user_id' in session:
         return redirect(url_for('index'))
     error = None
+
     if request.method == 'POST':
         userDetails = request.form
         username = userDetails['username']
@@ -124,7 +126,6 @@ def signup():
         if username is None or password is None:
             error = 'Please enter username and password!'
             return render_template('signup.html', error=error)
-
         
         cur = mysql.connection.cursor()
         cur.execute("SELECT username FROM users WHERE username=%s", (username,))
@@ -162,26 +163,28 @@ def signup():
         salt = bcrypt.gensalt(15)
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
 
-        cur.execute("INSERT INTO users (username, hashed_password, salt) VALUES (%s, %s, %s)", (username, hashed_password, salt,))
+        # (Google Authenticator OTP)
+        twofa_key =  pyotp.random_base32() # Generate a random secret key
+        uri = pyotp.totp.TOTP(twofa_key).provisioning_uri(name=username, issuer_name="group-39.comp3334.xavier2dc.fr")
+        generatedQrCode = qrcode.make(uri)
+        buf = BytesIO()
+        generatedQrCode.save(buf, "PNG")
+
+        if buf is None:
+            error = '2FA for OTP qrcode generate error!!!'
+            return render_template('signup.html', error=error)
+        
+        qrCode = f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
+
+        cur.execute("INSERT INTO users (username, hashed_password, salt, twofa_key) VALUES (%s, %s, %s, %s)", (username, hashed_password, salt, twofa_key,))
         mysql.connection.commit()
         cur.close()
+
+
         flash('Sign up successfully. Please login', 'info')
-        return render_template('login.html')
+        return render_template('login.html', qrCode=qrCode, twofa_key=twofa_key)
 
     return render_template('signup.html', error=error)
-
-
-            # Create a new account
-            # pop up a modal notification (Google Authenticator OTP)
-
-            # mfa_key =  pytotp.random_base32()
-            # uri = pytotp.totp.TOTP(mfa_key).provisioning_uri(name=username, issuer_name="group-39.comp3334.xavier2dc.fr")
-            # generatedQrCode = qrcode.make(uri)
-            # buf = BytesIO()
-            # generatedQrCode.save(buf, format="PNG")
-            # qrCode = f"data:image/png;bas64,{base64.b64encode(buf.getvalue()).decode()}"
-            # flash(qrCode)
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -192,13 +195,14 @@ def login():
         userDetails = request.form
         username = userDetails['username']
         password = userDetails['password']
+        otp = userDetails['otp']
         
-        if username is None or password is None:
-            error = 'Please enter username and password!'
-            return render_template('signup.html', error=error)
+        if username is None or password is None or otp is None:
+            error = 'Invalid credentials'
+            return render_template('login.html', error=error)
         
-        # find the user's salt
         cur = mysql.connection.cursor()
+        # find the user's salt
         cur.execute("SELECT salt FROM users WHERE username=%s", (username,))
         salt = cur.fetchone()
         if not salt:
@@ -211,6 +215,17 @@ def login():
         # verify the password
         if not bcrypt.checkpw(password.encode('utf-8'), hashed_password):
             error = 'Invalid credentials'
+            return render_template('login.html', error=error)
+        
+        # find the user's twofa_key
+        cur.execute("SELECT twofa_key FROM users WHERE username=%s", (username,))
+        twofa_key = cur.fetchone()
+        twofa_key = twofa_key[0]
+
+        # verify the otp
+        totp = pyotp.totp.TOTP(twofa_key)
+        if totp.verify(otp) is False:
+            error = 'Invalid OTP code'
             return render_template('login.html', error=error)
         
         cur.execute("SELECT user_id FROM users WHERE username=%s AND hashed_password=%s", (username, hashed_password,))

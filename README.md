@@ -27,14 +27,14 @@ docker-compose up --build
 
 ### Part 1 - Authentication
 - [x] User-chosen memorized Secret (password/passphrase)
-- [ ] Single-Factor OTP Device (Google Authenticator)
+- [x] Single-Factor OTP Device (Google Authenticator)
 - [ ] Look-Up Secrets (recovery keys)
 - [x] Password salted and hashed 
 - [x] Password verifiers - check against corpus form haveibeenpwned api
 - [ ] Implement rate-limiting mechanisms
 - [ ] Image-based CAPTCHAs
-- [ ] OTP bind to new account when registration
-- [ ] Implement proper session binding requirements
+- [x] OTP bind to new account when registration
+- [x] Implement proper session binding requirements
 - [ ] Provide a way to change authenticators after account registration
 
 ### Part 2 - E2EE chat

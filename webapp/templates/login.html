@@ -2,6 +2,41 @@
 {% block title %}Login{% endblock %}
 
 {% block body %}
+    {% if qrCode %}
+        <div id="mymodal" class="modal">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">You have successfully sign up!</h5>
+                        <button type="button" class="btn-close modalClose" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center flex-column">
+                        <h5>Scan the QR-code to set up new authenticator for your next login</h5>
+                        <h7 class="mb-3">(You can use <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_US&pli=1" target="_blank">
+                            Google Authenticator)
+                        </a></h7>
+                        <img id="qrcode" class="w-75 mb-3 user-select-none" src="{{ qrCode }}">
+                        <h5>
+                            Your secret key: {{twofa_key}}
+                        </h5>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary modalClose" data-bs-dismiss="modal">Done</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $("#mymodal").show()
+            })
+
+            $(".modalClose").on('click', function() {
+                $("#mymodal").hide()
+            })
+        </script>
+    {% endif %}
+
     <div class="login-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -24,23 +59,37 @@
             <i class="LoginIcon bi bi-person-fill rounded-circle d-flex justify-content-center align-items-center"></i>
         </div>
         <h2 class="text-center mb-5">Login</h2>
-        <form action="/login" method="post">
-            <div class="form-floating mb-3">
-                <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
-                <label for="username">Username</label>
-            </div>
-            <div class="form-floating mb-3">
-                <input type="password" class="form-control" id="password" name="password" placeholder="password" required>
-                <label for="password">Password</label>
-                <div class="showPasswordIcons">
-                    <i class="bi bi-eye" id="showPassword"></i>
-                    <i class="bi bi-eye-slash" id="hidePassword"></i>
+        <form class="pages" action="/login" method="post">
+            <div class="div page page1">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
+                    <label for="username">Username</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="password" required>
+                    <label for="password">Password</label>
+                    <div class="showPasswordIcons">
+                        <i class="bi bi-eye" id="showPassword"></i>
+                        <i class="bi bi-eye-slash" id="hidePassword"></i>
+                    </div>
+                </div>
+                <div class="text-center mb-3">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('forgotPassword') }}" class="text-decoration-none align-self-center">Forgot password?</a>
+                        <button type="button" class="continue btn btn-lg btn-outline-primary w-50">Continue</button>
+                    </div>
                 </div>
             </div>
-            <div class="text-center mb-3">
-                <div class="d-flex justify-content-between">
-                    <a href="{{ url_for('forgotPassword') }}" class="text-decoration-none align-self-center">Forgot password?</a>
-                    <button type="submit" class="btn btn-lg btn-outline-primary w-50">Login</button>
+            <div class="div page page2 d-flex flex-column justify-content-between">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="otp" name="otp" placeholder="otp" required>
+                    <label for="otp">OTP</label>
+                </div>
+                <div class="text-center mb-3">
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="back btn text-primary w-25">Go Back</button>
+                        <button type="submit" class="btn btn-lg btn-outline-primary w-50">Login</button>
+                    </div>
                 </div>
             </div>
         </form>
@@ -62,6 +111,30 @@
             $("#hidePassword").hide()
             $("#showPassword").show()
         }) 
+
+        // pages
+        $(".continue").on('click',function(){ // go to page2
+            $(".page").css("transform", "translate(-100%, 0)")
+            $(".page1").css({
+                "visibility": "hidden",
+                "opacity": "0",
+            })
+            $(".page2").css({
+                "visibility": "visible",
+                "opacity": "1",
+            })
+        })
+        $(".back").on('click',function(){ // back to page1
+            $(".page").css("transform", "translate(0%, 0)")
+            $(".page1").css({
+                "visibility": "visible",
+                "opacity": "1",
+            })
+            $(".page2").css({
+                "visibility": "hidden",
+                "opacity": "0",
+            })
+        })
         
     </script>
 {% endblock %}

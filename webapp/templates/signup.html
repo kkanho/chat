@@ -1,25 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Sign Up{% endblock %}
 {% block body %}
-    <!-- {% with qrCode = get_flashed_messages() %}
-    {% if qrCode %}
-        <dialog data-modal class="modal">
-            <h3>Your QR code for 2MF</h3>
-            <div>
-                <img src="{{ qrCode }}" />
-            </div>
-            <button data-close-modal>Close</button>
-        </dialog>
-        <script type="text/javascript">
-            modal = document.querySelector("[data-modal]")
-            modal.showModal()
-            closeBtn = document.querySelector("[data-close-modal]")
-            closeBtn.addEventListener("click", () => {
-                modal.close()
-            })
-        </script>
-    {% endif %}
-    {% endwith %} -->
     <div class="signup-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -85,6 +66,29 @@
             $("#showPassword").show()
         }) 
 
+        // pages
+        $(".continue").on('click',function(){ // go to page2
+            $(".page").css("transform", "translate(-100%, 0)")
+            $(".page1").css({
+                "visibility": "hidden",
+                "opacity": "0",
+            })
+            $(".page2").css({
+                "visibility": "visible",
+                "opacity": "1",
+            })
+        })
+        $(".back").on('click',function(){ // back to page1
+            $(".page").css("transform", "translate(0%, 0)")
+            $(".page1").css({
+                "visibility": "visible",
+                "opacity": "1",
+            })
+            $(".page2").css({
+                "visibility": "hidden",
+                "opacity": "0",
+            })
+        })
 
         // Password strength bar
         $("#password").on("input", function() {
