@@ -31,7 +31,7 @@ docker-compose up --build
 - [ ] Look-Up Secrets (recovery keys)
 - [x] Password salted and hashed 
 - [x] Password verifiers - check against corpus form haveibeenpwned api
-- [ ] Implement rate-limiting mechanisms
+- [x] Implement rate-limiting mechanisms
 - [ ] Image-based CAPTCHAs
 - [x] OTP bind to new account when registration
 - [x] Implement proper session binding requirements

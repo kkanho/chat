@@ -23,25 +23,41 @@
             <i class="signUpIcon bi bi-person-fill-add rounded-circle d-flex justify-content-center align-items-center"></i>
         </div>
         <h2 class="text-center mb-5">Sign Up</h2>
-        <form action="/signup" method="post">
-            <div class="form-floating mb-3">
-                <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
-                <label for="username">Username</label>
-            </div>
-            <div class="form-floating mb-3 position-relative">
-                <input type="password" class="form-control" id="password" name="password" placeholder="password" required>
-                <label for="password">Password</label>
-                <div class="showPasswordIcons">
-                    <i class="bi bi-eye" id="showPassword"></i>
-                    <i class="bi bi-eye-slash" id="hidePassword"></i>
+        <form class="pages" action="/signup" method="post">
+            <div class="div page page1">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
+                    <label for="username">Username</label>
                 </div>
-                <div class="progress" role="progressbar">
-                    <div class="progress-bar"></div>
+                <div class="form-floating mb-3 position-relative">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="password" required>
+                    <label for="password">Password</label>
+                    <div class="showPasswordIcons">
+                        <i class="bi bi-eye" id="showPassword"></i>
+                        <i class="bi bi-eye-slash" id="hidePassword"></i>
+                    </div>
+                    <div class="progress" role="progressbar">
+                        <div class="progress-bar"></div>
+                    </div>
+                    <div class="score-label position-absolute"></div>
                 </div>
-                <div class="score-label position-absolute"></div>
+                <div class="text-center mb-3">
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="continue btn btn-lg btn-outline-primary w-50">Next</button>
+                    </div>
+                </div>
             </div>
-            <div class="text-center mb-3 d-flex justify-content-end">
-                <button type="submit" class="btn btn-lg btn-outline-primary w-50">Sign up</button>
+            <div class="div page page2 d-flex flex-column justify-content-between">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="passphrase" name="passphrase" placeholder="Recovery Passphrase" required>
+                    <label for="passphrase">passphrase</label>
+                </div>
+                <div class="text-center mb-3">
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="back btn text-primary w-25">Go Back</button>
+                        <button type="submit" class="btn btn-lg btn-outline-primary w-50">Sign up</button>
+                    </div>
+                </div>
             </div>
         </form>
         <div class="container d-flex flex-column align-items-center pt-4">

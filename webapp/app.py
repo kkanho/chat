@@ -43,6 +43,9 @@ import qrcode
 import base64
 from io import BytesIO
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 app = Flask(__name__)
 
 app.config.update(
@@ -68,7 +71,17 @@ mysql = MySQL(app)
 # Initialize the Flask-Session
 Session(app)
 
+# Init Flask limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["500 per day", "100 per hour"]
+)
+
+
+
 @app.route('/')
+@limiter.exempt
 def index():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -76,6 +89,7 @@ def index():
     return render_template('chat.html', sender_id=sender_id)
 
 @app.route('/users')
+@limiter.exempt
 def users():
     if 'user_id' not in session:
         abort(403)
@@ -89,6 +103,7 @@ def users():
     return {'users': filtered_users}
 
 @app.route('/fetch_messages')
+@limiter.exempt
 def fetch_messages():
     if 'user_id' not in session:
         abort(403)
@@ -112,6 +127,7 @@ def fetch_messages():
     return jsonify({'messages': messages})
 
 @app.route('/signup', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def signup():
     if 'user_id' in session:
         return redirect(url_for('index'))
@@ -187,6 +203,7 @@ def signup():
     return render_template('signup.html', error=error)
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def login():
     if 'user_id' in session:
         return redirect(url_for('index'))
@@ -244,6 +261,7 @@ def forgotPassword():
     return render_template('forgotPassword.html')
 
 @app.route('/send_message', methods=['POST'])
+@limiter.exempt
 def send_message():
     if not request.json or not 'message_text' in request.json:
         abort(400)  # Bad request if the request doesn't contain JSON or lacks 'message_text'
@@ -267,6 +285,7 @@ def save_message(sender, receiver, message):
     cur.close()
 
 @app.route('/erase_chat', methods=['POST'])
+@limiter.exempt
 def erase_chat():
     if 'user_id' not in session:
         abort(403)
@@ -284,6 +303,7 @@ def erase_chat():
         return jsonify({'status': 'failure'}), 200
 
 @app.route('/logout')
+@limiter.exempt
 def logout():
     session.clear()
     flash('You have been successfully logged out.', 'info')  # Flash a logout success message

@@ -43,20 +43,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
     
 async function generateKey() {
-    let KeyPair = await window.crypto.subtle.generateKey(
-      {
+    let KeyPair = await window.crypto.subtle.generateKey({
         name: "ECDH",
         namedCurve: "P-384",
-      },
-      false,
-      ["deriveKey"],
-      ).then(a => {
+    },
+        false,
+        ["deriveKey"],
+    ).then(a => {
         window.crypto.subtle.exportKey("jwk", a.publicKey).then(b => {
         console.log(b);
         })
-        });
-  }
-    
+    });
+}
+
 // Send message function
 function sendMessage() {
     if (peer_id == -1) return; // Exit if no peer selected

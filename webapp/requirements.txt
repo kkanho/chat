@@ -11,3 +11,4 @@ zxcvbn==4.4.28
 pyotp==2.0.0
 Flask-Bcrypt==1.0.1
 qrcode==7.4.2
+Flask-Limiter==3.5.1
