@@ -27,5 +27,5 @@ CREATE TABLE messages (
 );
 
 -- Optionally, insert some initial data for testing
-INSERT INTO users (username, hashed_password, salt, twofa_key) VALUES ('Alice', '$2b$15$08JAbLHJDYavJPYicU73zu1KhfAV.B3RSmo5E6Bka2tnm.NC/BYnW', '$2b$15$08JAbLHJDYavJPYicU73zu', 'tmp');
-INSERT INTO users (username, hashed_password, salt, twofa_key) VALUES ('Bob', '$2b$15$HFR7t07VMpV7eF.78tauDOPJW5jqNXH7XNFMY9G76bnXgMyUZk3oK', '$2b$15$HFR7t07VMpV7eF.78tauDO', 'tmp');
+INSERT INTO users (username, hashed_password, salt, twofa_key) VALUES ('Alice', '$2b$15$08JAbLHJDYavJPYicU73zu1KhfAV.B3RSmo5E6Bka2tnm.NC/BYnW', '$2b$15$08JAbLHJDYavJPYicU73zu', 'ISSIZL2SWHM5UYH2');
+INSERT INTO users (username, hashed_password, salt, twofa_key) VALUES ('Bob', '$2b$15$HFR7t07VMpV7eF.78tauDOPJW5jqNXH7XNFMY9G76bnXgMyUZk3oK', '$2b$15$HFR7t07VMpV7eF.78tauDO', 'ISSIZL2SWHM5UYH2');

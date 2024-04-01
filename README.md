@@ -32,7 +32,7 @@ docker-compose up --build
 - [x] Password salted and hashed 
 - [x] Password verifiers - check against corpus form haveibeenpwned api
 - [x] Implement rate-limiting mechanisms
-- [ ] Image-based CAPTCHAs
+- [x] Image-based CAPTCHAs
 - [x] OTP bind to new account when registration
 - [x] Implement proper session binding requirements
 - [ ] Provide a way to change authenticators after account registration

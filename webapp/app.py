@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ==============================================================================
 
+import secrets
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort, flash, Blueprint
 from flask_mysqldb import MySQL
 from flask_session import Session
@@ -45,6 +46,11 @@ from io import BytesIO
 
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -137,11 +143,19 @@ def signup():
         userDetails = request.form
         username = userDetails['username']
         password = userDetails['password']
+        captcha = userDetails['g-recaptcha-response']
 
         # Checking
-        if username is None or password is None:
+        if username is None or password is None or captcha is None:
             error = 'Please enter username and password!'
             return render_template('signup.html', error=error)
+        
+        # check if captcha is valid
+        secret_key = os.getenv("SECRET_KEY")
+        response = requests.request("POST", "https://www.google.com/recaptcha/api/siteverify?secret=" + secret_key + "&response=" + captcha)
+        if response.json()["success"] is False:
+            error = "Invalid recaptcha"
+            return render_template('login.html', error=error)
         
         cur = mysql.connection.cursor()
         cur.execute("SELECT username FROM users WHERE username=%s", (username,))
@@ -213,35 +227,46 @@ def login():
         username = userDetails['username']
         password = userDetails['password']
         otp = userDetails['otp']
+        captcha = userDetails['g-recaptcha-response']
         
-        if username is None or password is None or otp is None:
+        if username is None or password is None or otp is None or captcha is None:
             error = 'Invalid credentials'
+            return render_template('login.html', error=error)
+        
+        # check if captcha is valid
+        secret_key = os.getenv("SECRET_KEY")
+        response = requests.request("POST", "https://www.google.com/recaptcha/api/siteverify?secret=" + secret_key + "&response=" + captcha)
+        if response.json()["success"] is False:
+            error = "Invalid recaptcha"
             return render_template('login.html', error=error)
         
         cur = mysql.connection.cursor()
-        # find the user's salt
-        cur.execute("SELECT salt FROM users WHERE username=%s", (username,))
-        salt = cur.fetchone()
-        if not salt:
-            time.sleep(5)
+        # find the user's hashed_password
+        cur.execute("SELECT hashed_password FROM users WHERE username=%s", (username,))
+        hashed_password = cur.fetchone()
+        if hashed_password is None:
+            time.sleep(3)
             error = 'Invalid credentials'
             return render_template('login.html', error=error)
-
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bytes(''.join(str(s) for s in salt), 'utf-8'))
+        hashed_password = hashed_password[0]
 
         # verify the password
-        if not bcrypt.checkpw(password.encode('utf-8'), hashed_password):
+        if bcrypt.checkpw(password.encode('utf-8'), bytes(hashed_password, 'utf-8')) is False:
             error = 'Invalid credentials'
             return render_template('login.html', error=error)
         
-        # find the user's twofa_key
-        cur.execute("SELECT twofa_key FROM users WHERE username=%s", (username,))
-        twofa_key = cur.fetchone()
-        twofa_key = twofa_key[0]
+        try:
+            # find the user's twofa_key
+            cur.execute("SELECT twofa_key FROM users WHERE username=%s", (username,))
+            twofa_key = cur.fetchone()
+            twofa_key = twofa_key[0]
 
-        # verify the otp
-        totp = pyotp.totp.TOTP(twofa_key)
-        if totp.verify(otp) is False:
+            # verify the otp
+            totp = pyotp.totp.TOTP(twofa_key)
+            if totp.verify(otp) is False:
+                error = 'Invalid OTP code'
+                return render_template('login.html', error=error)
+        except:
             error = 'Invalid OTP code'
             return render_template('login.html', error=error)
         

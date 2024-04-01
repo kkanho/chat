@@ -15,7 +15,7 @@
                         <h7 class="mb-3">(You can use <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_US&pli=1" target="_blank">
                             Google Authenticator)
                         </a></h7>
-                        <img id="qrcode" class="w-75 mb-3 user-select-none" src="{{ qrCode }}">
+                        <img id="qrcode" class="w-50 mb-3 user-select-none" src="{{ qrCode }}">
                         <h5>
                             Your secret key: {{twofa_key}}
                         </h5>
@@ -36,7 +36,7 @@
             })
         </script>
     {% endif %}
-
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <div class="login-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -81,9 +81,12 @@
                 </div>
             </div>
             <div class="div page page2 d-flex flex-column justify-content-between">
-                <div class="form-floating mb-3">
+                <div class="form-floating mb-2">
                     <input type="text" class="form-control" id="otp" name="otp" placeholder="otp" required>
                     <label for="otp">OTP</label>
+                </div>
+                <div class="d-flex justify-content-center mb-1">
+                    <div class="g-recaptcha" data-sitekey="6LfZNacpAAAAABXjgdHc1oS2XgxZUViI9ueNKElY"  data-type="image"></div>
                 </div>
                 <div class="text-center mb-3">
                     <div class="d-flex justify-content-between">

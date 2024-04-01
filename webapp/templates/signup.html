@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Sign Up{% endblock %}
 {% block body %}
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <div class="signup-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -48,9 +49,12 @@
                 </div>
             </div>
             <div class="div page page2 d-flex flex-column justify-content-between">
-                <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="passphrase" name="passphrase" placeholder="Recovery Passphrase" required>
+                <div class="form-floating mb-2">
+                    <input type="text" class="form-control" id="passphrase" name="passphrase" placeholder="Recovery Passphrase">
                     <label for="passphrase">passphrase</label>
+                </div>
+                <div class="d-flex justify-content-center mb-1">
+                    <div class="g-recaptcha" data-sitekey="6LfZNacpAAAAABXjgdHc1oS2XgxZUViI9ueNKElY" data-type="image"></div>
                 </div>
                 <div class="text-center mb-3">
                     <div class="d-flex justify-content-between">
