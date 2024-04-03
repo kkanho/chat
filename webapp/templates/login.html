@@ -2,7 +2,7 @@
 {% block title %}Login{% endblock %}
 
 {% block body %}
-    {% if qrCode %}
+    {% if qrCode%}
         <div id="mymodal" class="modal">
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
@@ -11,14 +11,52 @@
                         <button type="button" class="btn-close modalClose" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body d-flex align-items-center flex-column">
-                        <h5>Scan the QR-code to set up new authenticator for your next login</h5>
-                        <h7 class="mb-3">(You can use <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_US&pli=1" target="_blank">
+                        <h5>Step 1: Scan the QR-code to set up new authenticator for your next login</h5>
+                        <h7>(You can use <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_US&pli=1" target="_blank">
                             Google Authenticator)
                         </a></h7>
-                        <img id="qrcode" class="w-50 mb-3 user-select-none" src="{{ qrCode }}">
-                        <h5>
+                        <img id="qrcode" class="w-50 user-select-none" src="{{ qrCode }}">
+                        <h5 class="mb-3">
                             Your secret key: {{twofa_key}}
                         </h5>
+                        <h5>
+                            Step 2: Remember the following passphrase for recovery: 
+                        </h5>
+                        <h4 class="w-75 card card-body" style="text-align: justify; text-align-last: justify;">
+                            {{words}}
+                        </h4>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary modalClose" data-bs-dismiss="modal">Done</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $("#mymodal").show()
+            })
+
+            $(".modalClose").on('click', function() {
+                $("#mymodal").hide()
+            })
+        </script>
+    {% endif %}
+    {% if words %}
+        <div id="mymodal" class="modal">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">You have successfully change the password!</h5>
+                        <button type="button" class="btn-close modalClose" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center flex-column">
+                        <h5>
+                            Remember the following passphrase for the next recovery: 
+                        </h5>
+                        <h4 class="w-75 card card-body" style="text-align: justify; text-align-last: justify;">
+                            {{words}}
+                        </h4>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary modalClose" data-bs-dismiss="modal">Done</button>
@@ -86,7 +124,7 @@
                     <label for="otp">OTP</label>
                 </div>
                 <div class="d-flex justify-content-center mb-1">
-                    <div class="g-recaptcha" data-sitekey="6LfZNacpAAAAABXjgdHc1oS2XgxZUViI9ueNKElY"  data-type="image"></div>
+                    <div class="g-recaptcha" data-sitekey="6LfZNacpAAAAABXjgdHc1oS2XgxZUViI9ueNKElY" data-type="image"></div>
                 </div>
                 <div class="text-center mb-3">
                     <div class="d-flex justify-content-between">

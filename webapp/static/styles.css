@@ -89,7 +89,7 @@ svg {
     color: var(--background);
 }
 
-.login-container, .signup-container {
+.login-container, .signup-container, .forgotpassword-container {
     display: flex;
     flex-direction: column;
     width: 100%;

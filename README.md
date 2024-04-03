@@ -28,7 +28,7 @@ docker-compose up --build
 ### Part 1 - Authentication
 - [x] User-chosen memorized Secret (password/passphrase)
 - [x] Single-Factor OTP Device (Google Authenticator)
-- [ ] Look-Up Secrets (recovery keys)
+- [x] Look-Up Secrets (recovery keys)
 - [x] Password salted and hashed 
 - [x] Password verifiers - check against corpus form haveibeenpwned api
 - [x] Implement rate-limiting mechanisms
