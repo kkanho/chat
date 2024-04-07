@@ -38,19 +38,19 @@ docker-compose up --build
 - [ ] Provide a way to change authenticators after account registration
 
 ### Part 2 - E2EE chat
-- [ ] ECDH key exchange - establish a shared secret between two users
-- [ ] Underlying curve - P-384
-- [ ] Two 256-bit AES-GCM encryption keys
-- [ ] Two 256-bit MAC keys
-- [ ] Share secret using HKDF-SHA256
-- [ ] Unique salt for each message
-- [ ] Represent the info using JSON, console log in dev tools
-- [ ] Message encrypted using AES in GCM mode
-- [ ] All key material stored in local storage
-- [ ] All history messages should be display
-- [ ] Refresh button - re-derived all the symmetric key and IV and with a new salt
-- [ ] Keep all old keys in local storage for next login
-- [ ] Error message notify the user if the key is not found/cleared
+- [x] ECDH key exchange - establish a shared secret between two users
+- [x] Underlying curve - P-384
+- [x] Two 256-bit AES-GCM encryption keys
+- [x] Two 256-bit MAC keys
+- [x] Share secret using HKDF-SHA256
+- [x] Unique salt for each message
+- [x] Represent the info using JSON, console log in dev tools
+- [x] Message encrypted using AES in GCM mode
+- [x] All key material stored in local storage
+- [x] All history messages should be display
+- [x] Refresh button - re-derived all the symmetric key and IV and with a new salt
+- [x] Keep all old keys in local storage for next login
+- [x] Error message notify the user if the key is not found/cleared
 - [ ] Protected against CSRF or XSS or SQL injection
 
 ### Part 3 - TLS

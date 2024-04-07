@@ -37,9 +37,9 @@ from datetime import timedelta
 
 import requests
 import hashlib
+import time
 from zxcvbn import zxcvbn
 from flask_bcrypt import bcrypt
-import time
 
 import pyotp
 import qrcode
@@ -49,8 +49,8 @@ from io import BytesIO
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
 from mnemonic import Mnemonic
 
@@ -108,12 +108,36 @@ def users():
         abort(403)
 
     cur = mysql.connection.cursor()
-    cur.execute("SELECT user_id, username FROM users")
+    cur.execute("SELECT user_id, username, public_key FROM users")
     user_data = cur.fetchall()
     cur.close()
 
-    filtered_users = [[user[0], user[1]] for user in user_data if user[0] != session['user_id']]
+    filtered_users = [[user[0], user[1], user[2]] for user in user_data if user[0] != session['user_id']]
     return {'users': filtered_users}
+
+
+@app.route('/sharedPublicKey', methods=['POST'])
+@limiter.exempt
+def sharedPublicKey():
+    if 'user_id' not in session:
+        abort(403)
+        
+    if request.method == 'POST':
+        try:
+            userDetails = request.get_json()
+            public_key = userDetails['public_key']
+            user_id = userDetails['user_id']
+
+            cur = mysql.connection.cursor()
+            cur.execute("UPDATE users SET public_key=%s WHERE user_id=%s", (public_key, user_id,))
+            mysql.connection.commit()
+            cur.close()
+        except Exception as e:
+            return jsonify(success=False, error=str(e))
+
+    return jsonify({'status': 'success', 'message': 'Message sent'}), 200
+
+
 
 @app.route('/fetch_messages')
 @limiter.exempt
@@ -125,7 +149,7 @@ def fetch_messages():
     peer_id = request.args.get('peer_id', type=int)
     
     cur = mysql.connection.cursor()
-    query = """SELECT message_id,sender_id,receiver_id,message_text FROM messages 
+    query = """SELECT message_id,sender_id,receiver_id,message_text, iv, signature FROM messages 
                WHERE message_id > %s AND 
                ((sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s))
                ORDER BY message_id ASC"""
@@ -414,15 +438,17 @@ def send_message():
     sender_id = session['user_id']
     receiver_id = request.json['receiver_id']
     message_text = request.json['message_text']
+    iv = request.json['iv']
+    signature = request.json['signature']
 
     # Assuming you have a function to save messages
-    save_message(sender_id, receiver_id, message_text)
+    save_message(sender_id, receiver_id, message_text, iv, signature)
     
     return jsonify({'status': 'success', 'message': 'Message sent'}), 200
 
-def save_message(sender, receiver, message):
+def save_message(sender, receiver, message, iv, signature):
     cur = mysql.connection.cursor()
-    cur.execute("INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (%s, %s, %s)", (sender, receiver, message,))
+    cur.execute("INSERT INTO messages (sender_id, receiver_id, message_text, iv, signature) VALUES (%s, %s, %s, %s, %s)", (sender, receiver, message, iv, signature,))
     mysql.connection.commit()
     cur.close()
 
