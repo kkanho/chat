@@ -14,7 +14,7 @@ docker-compose up --build
 ```
 To view it in the browser,
 open [http://group-39.comp3334.xavier2dc.fr:8080/](http://group-39.comp3334.xavier2dc.fr:8080/)
-or with TLSv1.3 [https://group-39.comp3334.xavier2dc.fr:8433/](https://group-39.comp3334.xavier2dc.fr:8433/)
+or with TLSv1.3 [https://group-39.comp3334.xavier2dc.fr:8443/](https://group-39.comp3334.xavier2dc.fr:8443/)
 
 If any errors, try to restart multiple times with the following command
 ```sh
