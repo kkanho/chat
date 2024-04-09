@@ -70,6 +70,7 @@ app.config['SESSION_USE_SIGNER'] = True  # To sign session cookies for extra sec
 app.config['SESSION_FILE_DIR'] = './sessions'  # Needed if using filesystem type
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+# app.config['SESSION_COOKIE_SAMESITE'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 # Load database configuration from db.yaml or configure directly here
@@ -469,6 +470,43 @@ def erase_chat():
         return jsonify({'status': 'success'}), 200
     else:
         return jsonify({'status': 'failure'}), 200
+    
+
+@app.route('/changeAuth', methods=['POST'])
+@limiter.exempt
+def changeAuth():
+    if 'user_id' not in session:
+        abort(403)
+
+    user_id = request.json['user_id']
+    cur = mysql.connection.cursor()
+
+    cur.execute("SELECT username FROM users WHERE user_id=%s", (user_id,))
+    username = cur.fetchone()
+    username = username[0]
+
+    # (Google Authenticator OTP)
+    twofa_key =  pyotp.random_base32() # Generate a random secret key
+    uri = pyotp.totp.TOTP(twofa_key).provisioning_uri(name=username, issuer_name="group-39.comp3334.xavier2dc.fr")
+    generatedQrCode = qrcode.make(uri)
+    buf = BytesIO()
+    generatedQrCode.save(buf, "PNG")
+
+    if buf is None:
+        error = '2FA for OTP qrcode generate error!!!'
+        return render_template('signup.html', error=error)
+    
+    qrCode = f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
+
+    cur.execute("UPDATE users SET twofa_key=%s WHERE user_id=%s", (twofa_key, user_id,))
+    mysql.connection.commit()
+
+    # Check if the operation was successful by evaluating affected rows
+    if cur.rowcount > 0:
+        return jsonify({'status': 'success', 'qrCode': qrCode, "twofa_key" : twofa_key}), 200
+    else:
+        return jsonify({'status': 'failure'}), 200
+
 
 @app.route('/logout')
 @limiter.exempt

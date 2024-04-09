@@ -2,7 +2,31 @@
 {% block title %}Chat Application{% endblock %}
 {% block body %}
 
+<div id="mymodal" class="modal">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Set up new authenticator</h5>
+                <button type="button" class="btn-close modalClose" data-bs-dismiss="modal"></button>
+            </div>
+            <div id="qrCodeDisplay" class="modal-body d-flex align-items-center flex-column">
+                <h5>Step 1: Scan the QR-code to set up new authenticator for your next login</h5>
+                <h7>(You can use <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_US&pli=1" target="_blank">
+                    Google Authenticator)
+                </a></h7>
+                
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary modalClose" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container mt-4">
+    <button onclick="changeAuth()" id="changeAuthBtn" title="Change authenticator" class="btn">
+        Change authenticator
+    </button>
     <h2>Chat Application <small> - (<a href="/logout">Logout</a>)</small></h2>
     <div class="chat-box">
         <!-- Chat messages container -->
@@ -35,6 +59,54 @@ let userInfo = {};
 let counter = 0
 let iv
 
+$(".modalClose").on('click', function() {
+    $("#mymodal").hide()
+    $("#qrcode").remove()
+    $("#twofa_key").remove()
+})
+
+function changeAuth() {
+    if (!confirm('Are you sure you want to change authenticators?')) return; // Confirmation before erasing
+
+    fetch(`/changeAuth`, {
+        method: 'POST',  // A REST API should use POST if it leads to modifications
+        headers: {
+            'Content-Type': 'application/json', 
+        },
+        body: JSON.stringify({ user_id: myID })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json(); // Assuming the server responds with JSON
+    })
+    .then(data => {
+        console.log('Authenticators changed successfully', data);
+        
+        const imgQR = document.createElement("img")
+        imgQR.setAttribute("id", "qrcode")
+        imgQR.setAttribute("class", "w-50 user-select-none")
+        imgQR.setAttribute("src", data.qrCode)
+        $("#qrCodeDisplay")[0].appendChild(imgQR)
+        
+        const secret_key = document.createElement("h5")
+        secret_key.setAttribute("id", "twofa_key")
+        secret_key.setAttribute("class", "mb-3")
+        secret_key.textContent = `Your secret key: ${data.twofa_key}`
+        $("#qrCodeDisplay")[0].appendChild(secret_key)
+
+        $("#mymodal").show()
+        
+
+        // <img id="qrcode" class="w-50 user-select-none" src="{{ qrCode }}">
+        // <h5 class="mb-3">Your secret key: {{twofa_key}}</h5>
+    })
+    .catch(error => {
+        console.error('Error request changing authenticators:', error);
+    });
+}
+
 
 // Ctrl+Enter to send message
 document.addEventListener('DOMContentLoaded', function() {
@@ -47,6 +119,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
 //encrypt message
 async function encryptMessage(message, encryption_key, iv){
+
+    // encrypt the message
+    const aesKey = await window.crypto.subtle.importKey(
+        "jwk",
+        encryption_key,
+        {
+            name: "AES-GCM", 
+            length: 256 
+        },
+        true,
+        ["encrypt", "decrypt"],
+    )
+    
+    const encryptedMessage = await window.crypto.subtle.encrypt(
+        {
+            name: "AES-GCM",
+            iv: iv,
+            additionalData:  new TextEncoder().encode(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`),
+        },
+            aesKey,
+            new TextEncoder().encode(message)
+    )
+
+    return encryptedMessage
+}
+
+//decrypt message
+async function decryptMessage(message, encryption_key, iv){
 
     const ek = await window.crypto.subtle.importKey(
         "jwk",
@@ -73,45 +173,24 @@ async function encryptMessage(message, encryption_key, iv){
 async function sendMessage() {
     if (peer_id == -1) return; // Exit if no peer selected
     const message = document.getElementById('messageInput').value;
-    console.log("Message", message)
-
+    console.log("Message to be sent: ", message)
 
     if (iv == undefined || iv == NaN) {
         iv = window.crypto.getRandomValues(new Uint8Array(12))
     }
 
-    // `CHAT_KEY_USER_${myID}_to_USER_${peer_id}`
-
     // encrypt the message
-    const aesKey = await window.crypto.subtle.importKey(
-        "jwk",
-        JSON.parse(localStorage.getItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`)),
-        {
-            name: "AES-GCM", 
-            length: 256 
-        },
-        true,
-        ["encrypt", "decrypt"],
+    const encryptedMessage = await encryptMessage(
+        message, 
+        JSON.parse(atob(localStorage.getItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`))), 
+        iv
     )
-    console.log("AESKey", aesKey)
-    console.log("iv", btoa(iv))
-    
-    const encryptedMessage = await window.crypto.subtle.encrypt(
-        {
-            name: "AES-GCM",
-            iv: iv,
-            additionalData:  new TextEncoder().encode(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`),
-        },
-            aesKey,
-            new TextEncoder().encode(message)
-    )
-    // console.log("Encrypted Message", encryptedMessage)
-    console.log("Encrypted Message", btoa(new Uint8Array((encryptedMessage))))
 
-    // HMAC the iv
+
+    // HMAC
     const HMACKey = await window.crypto.subtle.importKey(
         "jwk",
-        JSON.parse(localStorage.getItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`)),
+        JSON.parse(atob(localStorage.getItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`))),
         {
             name: 'HMAC', 
             hash: 'SHA-256', 
@@ -121,15 +200,7 @@ async function sendMessage() {
         ["sign", "verify"],
     )
     
-    console.log("HMACKey", HMACKey)
     const signature = await window.crypto.subtle.sign("HMAC", HMACKey, iv)
-    
-    const verifyvalue = await crypto.subtle.verify("HMAC", HMACKey, signature, iv)
-    console.log("verifyvalue", verifyvalue)
-
-    console.log("encryptedMessage", encryptedMessage)
-    console.log("iv", iv)
-    
 
     const payload = {
         receiver_id: peer_id,
@@ -138,7 +209,7 @@ async function sendMessage() {
         signature: btoa(String.fromCharCode.apply(null, new Uint8Array(signature))),
     };
 
-    console.log(JSON.stringify(payload))
+    console.log("Payload", payload)
 
     fetch('/send_message', {
         method: 'POST', // Specify the method
@@ -179,12 +250,11 @@ async function generateECKeyPair() {
     console.log("JWK_ECPrivatekey", JSON.stringify(JWK_ECPrivatekey))
     console.log("---EC key Pair generated successfully---")
 
-    localStorage.setItem("JWK_ECPublickey", JSON.stringify(JWK_ECPublickey))
-    localStorage.setItem("JWK_ECPrivatekey", JSON.stringify(JWK_ECPrivatekey))
+    localStorage.setItem("JWK_ECPublickey", btoa(JSON.stringify(JWK_ECPublickey)))
+    localStorage.setItem("JWK_ECPrivatekey", btoa(JSON.stringify(JWK_ECPrivatekey)))
     console.log("---EC key Pair stored in localStorage---")
 
     return
-    // return JSON.parse(localStorage.getItem("JWK_ECPublickey"))
 }
 
 // Send the public key to the server
@@ -233,55 +303,35 @@ function refreshKeys() {
     // Placeholder for refresh functionality
     generateECKeyPair().then(() => {
         sharedPublicKey().then(() => {
-            sendKeyChangedMessage()
+            sendKeyChangedMessage().then(() => {
+                console.log("Keys have been updated!!!")
+            })
         })
     })
-
 
 }
 
 async function sendKeyChangedMessage() {
     if (peer_id == -1) return; // Exit if no peer selected
-    const message = "Keys changed";
+    const message = "Keys changed!!!";
     console.log("Message", message)
-
 
     if (iv == undefined || iv == NaN) {
         iv = window.crypto.getRandomValues(new Uint8Array(12))
     }
 
-    // `CHAT_KEY_USER_${myID}_to_USER_${peer_id}`
-
     // encrypt the message
-    const aesKey = await window.crypto.subtle.importKey(
-        "jwk",
-        JSON.parse(localStorage.getItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`)),
-        {
-            name: "AES-GCM", 
-            length: 256 
-        },
-        true,
-        ["encrypt", "decrypt"],
+    const encryptedMessage = await encryptMessage(
+        message, 
+        JSON.parse(atob(localStorage.getItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`))), 
+        iv
     )
-    console.log("AESKey", aesKey)
-    console.log("iv", btoa(iv))
-    
-    const encryptedMessage = await window.crypto.subtle.encrypt(
-        {
-            name: "AES-GCM",
-            iv: iv,
-            additionalData:  new TextEncoder().encode(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`),
-        },
-            aesKey,
-            new TextEncoder().encode(message)
-    )
-    // console.log("Encrypted Message", encryptedMessage)
-    console.log("Encrypted Message", btoa(new Uint8Array((encryptedMessage))))
 
-    // HMAC the iv
+
+    // HMAC
     const HMACKey = await window.crypto.subtle.importKey(
         "jwk",
-        JSON.parse(localStorage.getItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`)),
+        JSON.parse(atob(localStorage.getItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`))),
         {
             name: 'HMAC', 
             hash: 'SHA-256', 
@@ -291,15 +341,7 @@ async function sendKeyChangedMessage() {
         ["sign", "verify"],
     )
     
-    console.log("HMACKey", HMACKey)
     const signature = await window.crypto.subtle.sign("HMAC", HMACKey, iv)
-    
-    const verifyvalue = await crypto.subtle.verify("HMAC", HMACKey, signature, iv)
-    console.log("verifyvalue", verifyvalue)
-
-    console.log("encryptedMessage", encryptedMessage)
-    console.log("iv", iv)
-    
 
     const payload = {
         receiver_id: peer_id,
@@ -308,7 +350,7 @@ async function sendKeyChangedMessage() {
         signature: btoa(String.fromCharCode.apply(null, new Uint8Array(signature))),
     };
 
-    console.log(JSON.stringify(payload))
+    console.log("Payload", payload)
 
     fetch('/send_message', {
         method: 'POST', // Specify the method
@@ -325,7 +367,7 @@ async function sendKeyChangedMessage() {
         return response.json(); // Parse JSON response from the server
     })
     .then(data => {
-        console.log('Message sent:', data); // Log success message
+        // console.log('Message sent:', data); // Log success message
         document.getElementById('messageInput').value = ''; // Clear the input after sending
     })
     .catch(error => {
@@ -354,9 +396,9 @@ function fetchUserInfo() {
                     username : user[1],
                     publicKey : user[2],
                 } // Map user_id to username
-                localStorage.setItem(`${user[0]}_PublicKey`, userInfo[user[0]].publicKey)// Store peer's public key
+                localStorage.setItem(`${user[0]}_PublicKey`, btoa(userInfo[user[0]].publicKey))// Store peer's public key
             });
-            console.log(userInfo);
+            console.log("UserInfo", userInfo);
             populateUsers(data.users);
         })
         .catch(error => console.error('Error fetching userInfo:', error));
@@ -367,37 +409,14 @@ $(document).ready(function() {
     fetchUserInfo()
 });
 
-function bytesToHexString(bytes) {
-    if (!bytes)
-        return null;
+async function computeSharedSecret(){
 
-    bytes = new Uint8Array(bytes);
-    var hexBytes = [];
-
-    for (var i = 0; i < bytes.length; ++i) {
-        var byteString = bytes[i].toString(16);
-        if (byteString.length < 2)
-            byteString = "0" + byteString;
-        hexBytes.push(byteString);
-    }
-
-    return hexBytes.join("");
-}
-
-async function keyExchange(peer_id) {
-    // Check if EC key exchanged
-    if(localStorage.getItem(`${peer_id}_PublicKey`) === null){
-        // Preform key exchange
-        console.log(`${peer_id} key not found!!!`)
-    }
-
-    // Compute Shared Secret
-    console.log("My private key", localStorage.getItem("JWK_ECPrivatekey"))
-    console.log(`${peer_id} ${userInfo[peer_id].username} public key`, userInfo[peer_id].publicKey)
+    console.log("My private key: ", localStorage.getItem("JWK_ECPrivatekey"))
+    console.log(`${userInfo[peer_id].username} public key: `, userInfo[peer_id].publicKey)
 
     const my_privateKey = await window.crypto.subtle.importKey(
         "jwk",
-        JSON.parse(localStorage.getItem("JWK_ECPrivatekey")),
+        JSON.parse(atob(localStorage.getItem("JWK_ECPrivatekey"))),
         { name: "ECDH", namedCurve: "P-384", },
         true,
         ["deriveKey", "deriveBits"],
@@ -405,7 +424,7 @@ async function keyExchange(peer_id) {
 
     const peer_publicKey = await window.crypto.subtle.importKey(
         "jwk",
-        JSON.parse(userInfo[peer_id].publicKey),
+        JSON.parse(atob(userInfo[peer_id].publicKey)),
         { name: "ECDH", namedCurve: "P-384", },
         true,
         [],
@@ -416,80 +435,97 @@ async function keyExchange(peer_id) {
         my_privateKey, 
         384
     )
-    
-    console.log("sharedSecret", bytesToHexString(sharedSecret))
-    
-    
-    const derivedKey = await window.crypto.subtle.importKey(
-        "raw",
-        sharedSecret,
-        { name: "HKDF" },
-        false,
-        ["deriveKey"]
-    )
 
-    if (myID > peer_id) {
-        deriveEncryptionKey(derivedKey, counter + 1, `CHAT_KEY_USER_${myID}_to_USER_${peer_id}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                console.log("---Derive two 256-bit AES-GCM encryption keys---")
-                localStorage.setItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`, JSON.stringify(e))
-            })
-        })
-        
-        deriveEncryptionKey(derivedKey, counter + 2, `CHAT_KEY_USER_${peer_id}_to_USER_${myID}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                localStorage.setItem(`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`, JSON.stringify(e))
-            })
-        })
+    return sharedSecret
+}
 
-        deriveMACKey(derivedKey, counter + 3, `CHAT_MAC_USER_${myID}_to_USER_${peer_id}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                console.log("---Derive two 256-bit MAC keys---")
-                localStorage.setItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`, JSON.stringify(e))
-            })
-        })
 
-        deriveMACKey(derivedKey, counter + 4, `CHAT_MAC_USER_${peer_id}_to_USER_${myID}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                localStorage.setItem(`CHAT_MAC_USER_${peer_id}_to_USER_${myID}`, JSON.stringify(e))
-            })
-        })
+// Perform EC key exchange
+async function keyExchange(peer_id) {
+
+    if(localStorage.getItem(`${peer_id}_PublicKey`) === null){
+        // Preform key exchange
+        console.log(`${peer_id} public key not found!!!`)
     } else {
-        deriveEncryptionKey(derivedKey, counter + 1, `CHAT_KEY_USER_${peer_id}_to_USER_${myID}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                localStorage.setItem(`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`, JSON.stringify(e))
-            })
-        })
 
-        deriveEncryptionKey(derivedKey, counter + 2, `CHAT_KEY_USER_${myID}_to_USER_${peer_id}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                console.log("---Derive two 256-bit AES-GCM encryption keys---")
-                localStorage.setItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`, JSON.stringify(e))
-            })
-        })
+        const sharedSecret = await computeSharedSecret()
+        console.log("Shared Secret", btoa(sharedSecret))
         
+        
+        const derivedKey = await window.crypto.subtle.importKey(
+            "raw",
+            sharedSecret,
+            { name: "HKDF" },
+            false,
+            ["deriveKey"]
+        )
 
-        deriveMACKey(derivedKey, counter + 3, `CHAT_MAC_USER_${peer_id}_to_USER_${myID}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                localStorage.setItem(`CHAT_MAC_USER_${peer_id}_to_USER_${myID}`, JSON.stringify(e))
+        if (myID > peer_id) {
+            deriveEncryptionKey(derivedKey, counter + 1, `CHAT_KEY_USER_${myID}_to_USER_${peer_id}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit AES-GCM key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`, btoa(JSON.stringify(e)))
+                })
             })
-        })
-
-        deriveMACKey(derivedKey, counter + 4, `CHAT_MAC_USER_${myID}_to_USER_${peer_id}`)
-        .then((res) => {
-            window.crypto.subtle.exportKey("jwk",res).then((e) => {
-                console.log("---Derive two 256-bit MAC keys---")
-                localStorage.setItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`, JSON.stringify(e))
+            
+            deriveEncryptionKey(derivedKey, counter + 2, `CHAT_KEY_USER_${peer_id}_to_USER_${myID}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit AES-GCM key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`, btoa(JSON.stringify(e)))
+                })
             })
-        })
 
+            deriveMACKey(derivedKey, counter + 3, `CHAT_MAC_USER_${myID}_to_USER_${peer_id}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit MAC key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`, btoa(JSON.stringify(e)))
+                })
+            })
+
+            deriveMACKey(derivedKey, counter + 4, `CHAT_MAC_USER_${peer_id}_to_USER_${myID}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit MAC key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_MAC_USER_${peer_id}_to_USER_${myID}`, btoa(JSON.stringify(e)))
+                })
+            })
+        } else {
+            deriveEncryptionKey(derivedKey, counter + 1, `CHAT_KEY_USER_${peer_id}_to_USER_${myID}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit AES-GCM key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`, btoa(JSON.stringify(e)))
+                })
+            })
+
+            deriveEncryptionKey(derivedKey, counter + 2, `CHAT_KEY_USER_${myID}_to_USER_${peer_id}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit AES-GCM key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`, btoa(JSON.stringify(e)))
+                })
+            })
+            
+
+            deriveMACKey(derivedKey, counter + 3, `CHAT_MAC_USER_${peer_id}_to_USER_${myID}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit MAC key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_MAC_USER_${peer_id}_to_USER_${myID}`, btoa(JSON.stringify(e)))
+                })
+            })
+
+            deriveMACKey(derivedKey, counter + 4, `CHAT_MAC_USER_${myID}_to_USER_${peer_id}`)
+            .then((res) => {
+                window.crypto.subtle.exportKey("jwk",res).then((e) => {
+                    console.log(`Derived 256-bit MAC key successfully: ${btoa(JSON.stringify(e))}`)
+                    localStorage.setItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`, btoa(JSON.stringify(e)))
+                })
+            })
+        }
     }
 }
 
@@ -499,10 +535,9 @@ async function keyExchange(peer_id) {
 document.getElementById('userList').addEventListener('change', event => {
     peer_id = parseInt(event.target.value, 10); // Convert selected peer_id to integer
 
-    // Perform key exchange if there is no shared key
-    keyExchange(peer_id)
-    // if (localStorage.getItem("ECKeyPair") == null) { 
-    // }
+    console.log(`You are now communicating with: ${userInfo[peer_id].username}`)
+
+    keyExchange(peer_id) // Perform key exchange
 
     clearChatBox();
     lastMessageId = 0;
@@ -555,7 +590,6 @@ async function fetchMessages() {
     fetch(`/fetch_messages?last_message_id=${lastMessageId}&peer_id=${peer_id}`)
         .then(response => response.json())
         .then(data => {
-            // console.log("Peer->ME", JSON.parse(localStorage.getItem(`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`)))
             data.messages.forEach(message => {
                 // console.log("message", message)
                 displayMessage(message)
@@ -587,23 +621,17 @@ async function displayMessage(message) {
         localStorage.setItem(`${myID}_${peer_id}_${message.message_id}`, JSON.stringify(x))
     }
 
-    // console.log(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`)).message.iv)
-    
-    // var u8Decoded_iv = new Uint8Array(atob(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`)).message.iv).split("").map((c) => { return c.charCodeAt(0) }))
-    // var u8Decoded_signIV = new Uint8Array(atob(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`)).message.signature).split("").map((c) => { return c.charCodeAt(0) }))
-    // var u8Decoded_text = new Uint8Array(atob(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`)).message.message_text).split("").map((c) => { return c.charCodeAt(0) }))
-
     var u8Decoded_iv = new Uint8Array(atob(message.iv).split("").map((c) => { return c.charCodeAt(0) }))
     var u8Decoded_signIV = new Uint8Array(atob(message.signature).split("").map((c) => { return c.charCodeAt(0) }))
     var u8Decoded_text = new Uint8Array(atob(message.message_text).split("").map((c) => { return c.charCodeAt(0) }))
 
     if (sender === "me") { // I am sender
         const HMACKey = await crypto.subtle.importKey(
-        "jwk",
-        JSON.parse(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`]),
-        { name: 'HMAC', hash: 'SHA-256', length: 256 },
-        true,
-        ["sign", "verify"],
+            "jwk",
+            JSON.parse(atob(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`])),
+            { name: 'HMAC', hash: 'SHA-256', length: 256 },
+            true,
+            ["sign", "verify"],
         )
 
         const isFromMe = await window.crypto.subtle.verify(
@@ -617,13 +645,11 @@ async function displayMessage(message) {
 
             const aesKey = await window.crypto.subtle.importKey(
                 "jwk",
-                JSON.parse(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`]),
+                JSON.parse(atob(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`])),
                 { name: "AES-GCM", length: 256 },
                 true,
                 ["encrypt", "decrypt"],
                 )
-                
-                console.log("aesKey", aesKey)
                 
             const plaintext_arr = await window.crypto.subtle.decrypt(
                 { 
@@ -638,7 +664,7 @@ async function displayMessage(message) {
             // console.log(new TextDecoder("utf-8").decode(plaintext_arr))
             const plaintext = new TextDecoder("utf-8").decode(plaintext_arr) 
 
-            if (plaintext === "Keys changed") {
+            if (plaintext === "Keys changed!!!") {
                 messageElement.textContent = `${plaintext}`;
                 messageElement.style.color = 'red'
                 messagesContainer.appendChild(messageElement);
@@ -656,8 +682,7 @@ async function displayMessage(message) {
 
         const HMACKey = await crypto.subtle.importKey(
         "jwk",
-        JSON.parse(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_MAC_USER_${peer_id}_to_USER_${myID}`]),
-        // JSON.parse(localStorage.getItem(`CHAT_MAC_USER_${peer_id}_to_USER_${myID}`)),
+        JSON.parse(atob(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_MAC_USER_${peer_id}_to_USER_${myID}`])),
         { name: 'HMAC', hash: 'SHA-256', length: 256 },
         true,
         ["sign", "verify"],
@@ -674,14 +699,11 @@ async function displayMessage(message) {
 
             const aesKey = await window.crypto.subtle.importKey(
                 "jwk",
-                JSON.parse(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`]),
-                // JSON.parse(localStorage.getItem(`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`)),
+                JSON.parse(atob(JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))[`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`])),
                 { name: "AES-GCM", length: 256 },
                 true,
                 ["encrypt", "decrypt"],
                 )
-                
-                console.log("aesKey", aesKey)
                 
             const plaintext_arr = await window.crypto.subtle.decrypt(
                 { 
@@ -696,7 +718,7 @@ async function displayMessage(message) {
             // console.log(new TextDecoder("utf-8").decode(plaintext_arr))
             const plaintext = new TextDecoder("utf-8").decode(plaintext_arr) 
 
-            if (plaintext === "Keys changed") {
+            if (plaintext === "Keys changed!!!") {
                 messageElement.textContent = `${plaintext}`;
                 messageElement.style.color = 'red'
                 messagesContainer.appendChild(messageElement);
