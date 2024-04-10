@@ -70,8 +70,8 @@ app.config['SESSION_USE_SIGNER'] = True  # To sign session cookies for extra sec
 app.config['SESSION_FILE_DIR'] = './sessions'  # Needed if using filesystem type
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-# app.config['SESSION_COOKIE_SAMESITE'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_COOKIE_SAMESITE'] = 'LAX'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
 
 # Load database configuration from db.yaml or configure directly here
 db_config = yaml.load(open('db.yaml'), Loader=yaml.FullLoader)
@@ -136,7 +136,7 @@ def sharedPublicKey():
         except Exception as e:
             return jsonify(success=False, error=str(e))
 
-    return jsonify({'status': 'success', 'message': 'Message sent'}), 200
+    return jsonify({'status': 'success', 'message': 'Public Key sent'}), 200
 
 
 

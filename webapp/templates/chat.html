@@ -23,26 +23,59 @@
     </div>
 </div>
 
-<div class="container mt-4">
-    <button onclick="changeAuth()" id="changeAuthBtn" title="Change authenticator" class="btn">
-        Change authenticator
-    </button>
-    <h2>Chat Application <small> - (<a href="/logout">Logout</a>)</small></h2>
-    <div class="chat-box">
-        <!-- Chat messages container -->
-        <div id="messages" style="border:1px solid #ccc; height:300px; margin-bottom:20px; overflow-y:scroll; padding:10px;"></div>
-        <!-- User selection dropdown -->
-        <select id="userList" class="form-control mb-2">
-            <option value="-1" disabled selected><i>Choose a contact</i></option>
-            <!-- User options populated here -->
-        </select>
-        <!-- Message input -->
-        <textarea id="messageInput" class="form-control mb-2" placeholder="Type a message..."></textarea>
-        <div class="d-flex justify-content-between">
-            <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+<div class="chatApp-container">
+    <div class="Apptitle p-2">
+        <h4>Chat Application</h4>
+    </div>
+    <div class="toolsBar align-content-between d-flex">
+        <div class="left-top d-flex justify-content-between">
+            <button onclick="changeAuth()" id="changeAuthBtn" title="Change authenticator" class="btn">
+                <i class="bi bi-stars"></i> Change Authenticator
+            </button>
             <div>
-                <button onclick="refreshKeys()" class="btn btn-secondary btn-sm">Refresh Keys</button>
-                <button onclick="eraseChat()" class="btn btn-danger btn-sm">Erase Chat</button>
+                <a href="/logout" id="logoutBtn" class="btn">
+                    <i class="bi bi-box-arrow-in-left"></i> Logout
+                </a>
+            </div>
+        </div>
+        <div class="right-top d-flex justify-content-end gap-2">
+            <button onclick="refreshKeys()" id="refreshKeysBtn" class="btn" title="Refresh Key">
+                <i class="bi bi-key-fill"></i>
+            </button>
+            <button onclick="eraseChat()" id="eraseBtn" class="btn" title="Erase chat">
+                <i class="bi bi-trash3-fill"></i>
+            </button>
+        </div>
+    </div>
+    <div class="d-flex flex-grow-1 mb-2 overflow-hidden">
+        <div class="left-chat w-25 h-100 overflow-y-scroll">
+            <div class="container search-container">
+                <input
+                    class="form-control filter-users w-100 my-1"
+                    placeholder="Search"
+                />
+            </div>
+            <!-- User selection dropdown -->
+            <select id="userList" class="form-control">
+                <option value="-1" disabled selected><i>Choose a contact</i></option>
+                <!-- User options populated here -->
+            </select>
+            <div id="userListDisplay">
+
+            </div>
+        </div>
+        <div class="right-chat w-75">
+            <div class="chat-box d-flex flex-column h-100">
+                <!-- Chat messages container -->
+                <div id="messages" class="flex-grow-1" style="border:1px solid #ccc; min-height:300px; overflow-y:scroll; padding:10px;"></div>
+                <!-- Message input -->
+                <textarea id="messageInput" class="form-control my-2 rounded-5" rows="1" style="width: 94%;" placeholder="Type a message..."></textarea>
+                <div class="position-relative">
+                    <button onclick="sendMessage()" id="sendMessageBtn" class="btn rounded-5 position-absolute">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+
             </div>
         </div>
     </div>
@@ -97,10 +130,6 @@ function changeAuth() {
         $("#qrCodeDisplay")[0].appendChild(secret_key)
 
         $("#mymodal").show()
-        
-
-        // <img id="qrcode" class="w-50 user-select-none" src="{{ qrCode }}">
-        // <h5 class="mb-3">Your secret key: {{twofa_key}}</h5>
     })
     .catch(error => {
         console.error('Error request changing authenticators:', error);
@@ -173,7 +202,7 @@ async function decryptMessage(message, encryption_key, iv){
 async function sendMessage() {
     if (peer_id == -1) return; // Exit if no peer selected
     const message = document.getElementById('messageInput').value;
-    console.log("Message to be sent: ", message)
+    console.log("Message to be send: ", message)
 
     if (iv == undefined || iv == NaN) {
         iv = window.crypto.getRandomValues(new Uint8Array(12))
@@ -375,6 +404,25 @@ async function sendKeyChangedMessage() {
     });
 }
 
+// Handle user selection change
+document.getElementById('userList').addEventListener('change', event => {
+    peer_id = parseInt(event.target.value, 10); // Convert selected peer_id to integer
+
+    console.log(`You are now communicating with: ${userInfo[peer_id].username}`)
+
+    keyExchange(peer_id) // Perform key exchange
+
+    clearChatBox();
+    lastMessageId = 0;
+    fetchMessages(); // Fetch messages for the new selection
+});
+
+function selectUser(id) {
+    const selected = document.getElementById('userList')
+
+    selected.value = id
+    selected.dispatchEvent(new Event('change'))
+}
 
 // Populate users function
 function populateUsers(users) {
@@ -382,6 +430,12 @@ function populateUsers(users) {
     users.forEach(user => {
         const option = new Option(user[1], user[0]); // username as text, user_id as value
         userListDropdown.add(option);
+        $("#userListDisplay").append(`
+            <div class="user_block">
+                <input type="radio" name="user_id" id="user_${user[0]}" onclick="selectUser(${user[0]})" />
+                <label for="user_${user[0]}">${user[1]}</label>
+            </div>
+        `);
     });
 }
 
@@ -529,21 +583,6 @@ async function keyExchange(peer_id) {
     }
 }
 
-
-
-// Handle user selection change
-document.getElementById('userList').addEventListener('change', event => {
-    peer_id = parseInt(event.target.value, 10); // Convert selected peer_id to integer
-
-    console.log(`You are now communicating with: ${userInfo[peer_id].username}`)
-
-    keyExchange(peer_id) // Perform key exchange
-
-    clearChatBox();
-    lastMessageId = 0;
-    fetchMessages(); // Fetch messages for the new selection
-});
-
 function deriveEncryptionKey(keyMaterial, salt, information) {
     return window.crypto.subtle.deriveKey(
         {
@@ -603,6 +642,7 @@ async function fetchMessages() {
 async function displayMessage(message) {
     const messagesContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
+    messageElement.classList.add("d-flex")
 
     // Determine sender and receiver strings
     const sender = message.sender_id == myID ? "me" : (userInfo[message.sender_id].username || `User ${message.sender_id}`);
@@ -665,16 +705,20 @@ async function displayMessage(message) {
             const plaintext = new TextDecoder("utf-8").decode(plaintext_arr) 
 
             if (plaintext === "Keys changed!!!") {
-                messageElement.textContent = `${plaintext}`;
-                messageElement.style.color = 'red'
+                console.log(plaintext)
+                messageElement.textContent = `Own keys changed`;
+                messageElement.classList.add("keyChangedTag")
                 messagesContainer.appendChild(messageElement);
             } else {
-                messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
+                // messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
+                messageElement.textContent = plaintext;
+                messageElement.classList.add("myTag")
                 messagesContainer.appendChild(messageElement);
             }
 
         } else {
             messageElement.textContent = `Warning: Message have been modified (Man in the middle attack) Or The Public Key have been update`;
+            messageElement.classList.add("warningTag")
             messagesContainer.appendChild(messageElement);
         }
                 
@@ -719,17 +763,21 @@ async function displayMessage(message) {
             const plaintext = new TextDecoder("utf-8").decode(plaintext_arr) 
 
             if (plaintext === "Keys changed!!!") {
-                messageElement.textContent = `${plaintext}`;
-                messageElement.style.color = 'red'
+                console.log(plaintext)
+                messageElement.textContent = `${userInfo[peer_id].username}'s keys changed`;
+                messageElement.classList.add("keyChangedTag")
                 messagesContainer.appendChild(messageElement);
             } else {
-                messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
+                // messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
+                messageElement.textContent = plaintext;
+                messageElement.classList.add("peerTag")
                 messagesContainer.appendChild(messageElement);
             }
             
                 
         } else {
             messageElement.textContent = `Warning: Message have been modified (Man in the middle attack) Or The Public Key have been update`;
+            messageElement.classList.add("warningTag")
             messagesContainer.appendChild(messageElement);
         }
     }
@@ -766,6 +814,24 @@ function eraseChat() {
         console.error('Error erasing chat:', error);
     });
 }
+
+// Search user
+document.querySelector('.filter-users').addEventListener('input', (e) => {
+    const search = e.target.value;
+    const users = document.querySelectorAll('.user_block');
+    const searchLowerText = search.toLowerCase();
+
+    for (const user of users) {
+        console.log(user)
+        const lowerText = user.innerText.toLowerCase();
+        if (lowerText.includes(searchLowerText)) {
+            user.classList.remove('hide');
+        } else {
+            user.classList.add('hide');
+        }
+    }
+})
+
 
 </script>
 </body>
