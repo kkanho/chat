@@ -751,6 +751,10 @@ async function displayMessage(message) {
                 console.log(plaintext)
                 messageElement.textContent = `Own keys changed`;
                 messageElement.classList.add("keyChangedTag")
+                // Get peer's public key then Preform key exchange
+                fetchUserPublicKey().then(() => {
+                    keyExchange(peer_id) // Perform key exchange
+                })
             } else {
                 // messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
                 messageElement.textContent = plaintext;
@@ -809,6 +813,10 @@ async function displayMessage(message) {
                 console.log(plaintext)
                 messageElement.textContent = `${userInfo[peer_id].username}'s keys changed`;
                 messageElement.classList.add("keyChangedTag")
+                // Get peer's public key then Preform key exchange
+                fetchUserPublicKey().then(() => {
+                    keyExchange(peer_id) // Perform key exchange
+                })
             } else {
                 // messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
                 messageElement.textContent = plaintext;
