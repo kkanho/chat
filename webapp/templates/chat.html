@@ -206,6 +206,9 @@ async function sendMessage() {
 
     if (iv == undefined || iv == NaN) {
         iv = window.crypto.getRandomValues(new Uint8Array(12))
+    } 
+    else {
+        iv[11] += 1 
     }
 
     // encrypt the message
@@ -238,8 +241,6 @@ async function sendMessage() {
         signature: btoa(String.fromCharCode.apply(null, new Uint8Array(signature))),
     };
     console.log("Payload", payload)
-
-    iv[11] += 1 
 
     fetch('/send_message', {
         method: 'POST', // Specify the method
@@ -340,7 +341,6 @@ function refreshKeys() {
             })
         })
     })
-
 }
 
 async function sendKeyChangedMessage() {
@@ -413,7 +413,10 @@ document.getElementById('userList').addEventListener('change', event => {
 
     console.log(`You are now communicating with: ${userInfo[peer_id].username}`)
 
-    keyExchange(peer_id) // Perform key exchange
+    // Get peer's public key then Preform key exchange
+    fetchUserPublicKey().then(() => {
+        keyExchange(peer_id) // Perform key exchange
+    })
 
     clearChatBox();
     lastMessageId = 0;
@@ -440,6 +443,30 @@ function populateUsers(users) {
             </div>
         `);
     });
+}
+
+
+function fetchUserPublicKey() {
+    return new Promise((resolver, reject) => {
+        fetch('/users')
+        .then(response => response.json())
+        .then(data => {
+            data.users.forEach(user => {
+                userInfo[user[0]] = {
+                    id: user[0],
+                    username : user[1],
+                    publicKey : user[2],
+                } // Map user_id to username
+                localStorage.setItem(`${user[0]}_PublicKey`, btoa(userInfo[user[0]].publicKey))// Store peer's public key
+            });
+            console.log("UserInfo", userInfo);
+            resolver()
+        })
+        .catch(error => {
+            console.error('Error fetching userInfo:', error)
+            reject(error)
+        });
+    })
 }
 
 
@@ -510,17 +537,8 @@ async function computeSharedSecret(){
 // Perform EC key exchange
 async function keyExchange(peer_id) {
 
-    if(localStorage.getItem(`${peer_id}_PublicKey`) === null){
-        // Preform key exchange
-        console.log(`${peer_id} public key not found!!!`)
-        fetchUserInfo().then(() => {
-            keyExchange(peer_id)
-        })
-    } else {
-
         const sharedSecret = await computeSharedSecret()
         console.log("Shared Secret", btoa(sharedSecret))
-        
         
         const derivedKey = await window.crypto.subtle.importKey(
             "raw",
@@ -596,7 +614,7 @@ async function keyExchange(peer_id) {
                 })
             })
         }
-    }
+    
 }
 
 function deriveEncryptionKey(keyMaterial, salt, information) {
@@ -642,16 +660,19 @@ function clearChatBox() {
 // Fetch messages from server
 async function fetchMessages() {
     if (peer_id === -1) return; // Exit if no peer selected
-    fetch(`/fetch_messages?last_message_id=${lastMessageId}&peer_id=${peer_id}`)
-        .then(response => response.json())
-        .then(data => {
-            data.messages.forEach(async message => {
-                // console.log("message", message)
-                await displayMessage(message)
-                lastMessageId = message.message_id;
-            })
-        })
-        .catch(error => console.error('Error fetching messages:', error));
+    
+    try {
+        const response = await fetch(`/fetch_messages?last_message_id=${lastMessageId}&peer_id=${peer_id}`)
+        const data = await response.json()
+        
+        for (let message of data.messages) {
+            console.log("message", message)
+            await displayMessage(message)
+            lastMessageId = message.message_id;
+        }
+    } catch (error) {
+        console.log('Error fetching messages:', error)
+    }
 }
 
 // Display a single message
@@ -737,12 +758,13 @@ async function displayMessage(message) {
             }
 
         } else {
-            messageElement.textContent = `Warning: Message have been modified (Man in the middle attack) Or The Public Key have been update`;
+            messageElement.textContent = `Warning: This message have been modified (Man in the middle attack) Or The Public Key have been update`;
             messageElement.classList.add("warningTag")
         }
 
+        messageElement.setAttribute('id', message.message_id)
         messagesContainer.appendChild(messageElement);
-        
+        messagesContainer.scrollTo({top: messagesContainer.scrollHeight, behavior: 'smooth'})
     } else {
 
         const HMACKey = await crypto.subtle.importKey(
@@ -794,12 +816,13 @@ async function displayMessage(message) {
             }
                 
         } else {
-            messageElement.textContent = `Warning: Message have been modified (Man in the middle attack) Or The Public Key have been update`;
+            messageElement.textContent = `Warning: This message have been modified (Man in the middle attack) Or The Public Key have been update`;
             messageElement.classList.add("warningTag")
         }
+        messageElement.setAttribute('id', message.message_id)
         messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTo({top: messagesContainer.scrollHeight, behavior: 'smooth'})
     }
-
 }
 
 // Periodically fetch new messages every second
