@@ -16,11 +16,16 @@ To view it in the browser,
 open [http://group-39.comp3334.xavier2dc.fr:8080/](http://group-39.comp3334.xavier2dc.fr:8080/)
 or with TLSv1.3 [https://group-39.comp3334.xavier2dc.fr:8443/](https://group-39.comp3334.xavier2dc.fr:8443/)
 
-If any errors, try to restart multiple times with the following command
+If any errors, try to re build the server with the following command
 ```sh
 docker-compose down
 
 docker-compose up --build
+```
+
+Or restart with the following command
+```sh
+docker-compose restart
 ```
 
 ## Features
@@ -35,26 +40,28 @@ docker-compose up --build
 - [x] Image-based CAPTCHAs
 - [x] OTP bind to new account when registration
 - [x] Implement proper session binding requirements
-- [ ] Provide a way to change authenticators after account registration
+- [x] Provide a way to change authenticators after account registration
 
 ### Part 2 - E2EE chat
 - [x] ECDH key exchange - establish a shared secret between two users
 - [x] Underlying curve - P-384
-- [x] Two 256-bit AES-GCM encryption keys
-- [x] Two 256-bit MAC keys
+- [x] Derive two 256-bit AES-GCM encryption keys
+- [x] Derive two 256-bit MAC keys
 - [x] Share secret using HKDF-SHA256
 - [x] Unique salt for each message
 - [x] Represent the info using JSON, console log in dev tools
 - [x] Message encrypted using AES in GCM mode
+- [x] Prevent replay attacks as a recipient
 - [x] All key material stored in local storage
 - [x] All history messages should be display
+- [x] Show warning if previous messages cannot be decrypted
 - [x] Refresh button - re-derived all the symmetric key and IV and with a new salt
 - [x] Keep all old keys in local storage for next login
 - [x] Error message notify the user if the key is not found/cleared
-- [ ] Protected against CSRF or XSS or SQL injection
+- [x] Protected against CSRF or XSS or SQL injection (samesite: lax)
 
 ### Part 3 - TLS
-- [x] Communications encrypted - protect data in transit  with TLSv1.3
+- [x] Communications encrypted - protect data in transit with TLSv1.3
 
 To use TLS in your own browser, set the root CA(COMP3334 Project Root CA 2024) to always trust
 

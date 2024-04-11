@@ -237,8 +237,9 @@ async function sendMessage() {
         iv:   btoa(String.fromCharCode.apply(null, iv)),
         signature: btoa(String.fromCharCode.apply(null, new Uint8Array(signature))),
     };
-
     console.log("Payload", payload)
+
+    iv[11] += 1 
 
     fetch('/send_message', {
         method: 'POST', // Specify the method
@@ -318,11 +319,13 @@ async function sharedPublicKey() {
 
 }
 
-// If no JWK_ECkey
 $(document).ready(function() {
-    if (localStorage.getItem("JWK_ECPrivatekey") === null || localStorage.getItem("JWK_ECPublickey") === null ) {
+    // Only generate for user first time log in
+    if (localStorage.getItem("JWK_ECPrivatekey") === null || localStorage.getItem("JWK_ECPublickey") === null ) {// If no JWK_ECkey
         generateECKeyPair().then(() => {
-            sharedPublicKey()
+            sharedPublicKey().then(() => {
+                console.log("Keys generate successfully and sent to server!!!")
+            })
         })
     }
 });
@@ -468,29 +471,39 @@ async function computeSharedSecret(){
     console.log("My private key: ", localStorage.getItem("JWK_ECPrivatekey"))
     console.log(`${userInfo[peer_id].username} public key: `, userInfo[peer_id].publicKey)
 
-    const my_privateKey = await window.crypto.subtle.importKey(
-        "jwk",
-        JSON.parse(atob(localStorage.getItem("JWK_ECPrivatekey"))),
-        { name: "ECDH", namedCurve: "P-384", },
-        true,
-        ["deriveKey", "deriveBits"],
-    )
+    try {
+        const my_privateKey = await window.crypto.subtle.importKey(
+            "jwk",
+            JSON.parse(atob(localStorage.getItem("JWK_ECPrivatekey"))),
+            { name: "ECDH", namedCurve: "P-384", },
+            true,
+            ["deriveKey", "deriveBits"],
+        )
 
-    const peer_publicKey = await window.crypto.subtle.importKey(
-        "jwk",
-        JSON.parse(atob(userInfo[peer_id].publicKey)),
-        { name: "ECDH", namedCurve: "P-384", },
-        true,
-        [],
-    )
+        const peer_publicKey = await window.crypto.subtle.importKey(
+            "jwk",
+            JSON.parse(atob(userInfo[peer_id].publicKey)),
+            { name: "ECDH", namedCurve: "P-384", },
+            true,
+            [],
+        )
 
-    const sharedSecret = await window.crypto.subtle.deriveBits(
-        { name:"ECDH", public: peer_publicKey }, 
-        my_privateKey, 
-        384
-    )
+        const sharedSecret = await window.crypto.subtle.deriveBits(
+            { name:"ECDH", public: peer_publicKey }, 
+            my_privateKey, 
+            384
+        )
+    
+        return sharedSecret
 
-    return sharedSecret
+    } catch (error) {
+        generateECKeyPair().then(() => {
+            sharedPublicKey().then(() => {
+                console.log("Keys generate successfully and sent to server!!!")
+                computeSharedSecret()
+            })
+        })
+    }
 }
 
 
@@ -500,6 +513,9 @@ async function keyExchange(peer_id) {
     if(localStorage.getItem(`${peer_id}_PublicKey`) === null){
         // Preform key exchange
         console.log(`${peer_id} public key not found!!!`)
+        fetchUserInfo().then(() => {
+            keyExchange(peer_id)
+        })
     } else {
 
         const sharedSecret = await computeSharedSecret()
@@ -629,9 +645,9 @@ async function fetchMessages() {
     fetch(`/fetch_messages?last_message_id=${lastMessageId}&peer_id=${peer_id}`)
         .then(response => response.json())
         .then(data => {
-            data.messages.forEach(message => {
+            data.messages.forEach(async message => {
                 // console.log("message", message)
-                displayMessage(message)
+                await displayMessage(message)
                 lastMessageId = message.message_id;
             })
         })
@@ -664,6 +680,12 @@ async function displayMessage(message) {
     var u8Decoded_iv = new Uint8Array(atob(message.iv).split("").map((c) => { return c.charCodeAt(0) }))
     var u8Decoded_signIV = new Uint8Array(atob(message.signature).split("").map((c) => { return c.charCodeAt(0) }))
     var u8Decoded_text = new Uint8Array(atob(message.message_text).split("").map((c) => { return c.charCodeAt(0) }))
+
+    // check if iv > iv_pervious 
+    if (localStorage.getItem(`${myID}_${peer_id}_${message.message_id - 1}`) != null) {
+        // console.log(!JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id - 1}`))["message"].iv < JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))["message"].iv)
+        if (!JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id - 1}`))["message"].iv < JSON.parse(localStorage.getItem(`${myID}_${peer_id}_${message.message_id}`))["message"].iv) console.log("Replay attack: iv_i > iv_{i-1} ")
+    }
 
     if (sender === "me") { // I am sender
         const HMACKey = await crypto.subtle.importKey(
@@ -708,20 +730,19 @@ async function displayMessage(message) {
                 console.log(plaintext)
                 messageElement.textContent = `Own keys changed`;
                 messageElement.classList.add("keyChangedTag")
-                messagesContainer.appendChild(messageElement);
             } else {
                 // messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
                 messageElement.textContent = plaintext;
                 messageElement.classList.add("myTag")
-                messagesContainer.appendChild(messageElement);
             }
 
         } else {
             messageElement.textContent = `Warning: Message have been modified (Man in the middle attack) Or The Public Key have been update`;
             messageElement.classList.add("warningTag")
-            messagesContainer.appendChild(messageElement);
         }
-                
+
+        messagesContainer.appendChild(messageElement);
+        
     } else {
 
         const HMACKey = await crypto.subtle.importKey(
@@ -766,27 +787,23 @@ async function displayMessage(message) {
                 console.log(plaintext)
                 messageElement.textContent = `${userInfo[peer_id].username}'s keys changed`;
                 messageElement.classList.add("keyChangedTag")
-                messagesContainer.appendChild(messageElement);
             } else {
                 // messageElement.textContent = `From ${sender} to ${receiver}: ${plaintext}`;
                 messageElement.textContent = plaintext;
                 messageElement.classList.add("peerTag")
-                messagesContainer.appendChild(messageElement);
             }
-            
                 
         } else {
             messageElement.textContent = `Warning: Message have been modified (Man in the middle attack) Or The Public Key have been update`;
             messageElement.classList.add("warningTag")
-            messagesContainer.appendChild(messageElement);
         }
+        messagesContainer.appendChild(messageElement);
     }
 
 }
 
 // Periodically fetch new messages every second
-setInterval(fetchMessages, 10000);
-// setInterval(fetchMessages, 1000);
+setInterval(fetchMessages, 1000);
 
 // Erase Chat function using fetch API
 function eraseChat() {
@@ -822,7 +839,7 @@ document.querySelector('.filter-users').addEventListener('input', (e) => {
     const searchLowerText = search.toLowerCase();
 
     for (const user of users) {
-        console.log(user)
+        // console.log(user)
         const lowerText = user.innerText.toLowerCase();
         if (lowerText.includes(searchLowerText)) {
             user.classList.remove('hide');

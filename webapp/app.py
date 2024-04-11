@@ -27,11 +27,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ==============================================================================
 
-import secrets
+import yaml
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort, flash, Blueprint
 from flask_mysqldb import MySQL
 from flask_session import Session
-import yaml
 
 from datetime import timedelta
 
@@ -92,7 +91,12 @@ limiter = Limiter(
     default_limits=["500 per day", "100 per hour"]
 )
 
-
+# @app.after_request
+# def set_secure_headers(response):
+#     response.headers['X-Content-Type-Options'] = 'nosniff'
+#     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+#     response.headers['X-XSS-Protection'] = '1; mode=block'
+#     return response
 
 @app.route('/')
 @limiter.exempt

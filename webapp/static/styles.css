@@ -287,7 +287,7 @@ svg {
 .keyChangedTag {
     width: 100%;
     padding: 0.5rem 1rem;
-    color: white;
+    color: var(--text-x);
     justify-content: center;
     border: 1px solid#ff2f55;
     background-color: #ff2f55;
@@ -308,4 +308,5 @@ svg {
     justify-content: center;
     border: 1px solid#ffe32f;
     background-color: #ffe32f;
+    color: var(--text-x);
 }
