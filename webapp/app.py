@@ -185,6 +185,9 @@ def signup():
         if username is None or password is None or captcha is None:
             error = 'Please enter username and password!'
             return render_template('signup.html', error=error)
+        if len(username) > 200 or len(password) > 200:
+            error = 'Input too large!'
+            return render_template('signup.html', error=error)
         
         # check if captcha is valid
         secret_key = os.getenv("SECRET_KEY")
@@ -272,6 +275,9 @@ def login():
         if username is None or password is None or otp is None or captcha is None:
             error = 'Invalid credentials'
             return render_template('login.html', error=error)
+        if len(username) > 200 or len(password) > 200 or len(otp) > 6:
+            error = 'Input too large!'
+            return render_template('signup.html', error=error)
         
         # check if captcha is valid
         secret_key = os.getenv("SECRET_KEY")
@@ -340,6 +346,9 @@ def forgotPassword():
         if username is None or passphrase is None or new_password is None or otp is None or captcha is None:
             error = 'Invalid credentials'
             return render_template('forgotPassword.html', error=error)
+        if len(username) > 200 or len(passphrase) > 100 or len(otp) > 6:
+            error = 'Input too large!'
+            return render_template('signup.html', error=error)
         
         cur = mysql.connection.cursor()
 

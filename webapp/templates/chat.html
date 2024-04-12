@@ -282,12 +282,12 @@ async function generateECKeyPair() {
 
     const JWK_ECPublickey = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey)
     const JWK_ECPrivatekey = await window.crypto.subtle.exportKey("jwk", keyPair.privateKey)
-    console.log("JWK_ECPublickey", JSON.stringify(JWK_ECPublickey))
-    console.log("JWK_ECPrivatekey", JSON.stringify(JWK_ECPrivatekey))
+    console.log(`${myID}_JWK_ECPublickey`, JSON.stringify(JWK_ECPublickey))
+    console.log(`${myID}_JWK_ECPrivatekey`, JSON.stringify(JWK_ECPrivatekey))
     console.log("---EC key Pair generated successfully---")
 
-    localStorage.setItem("JWK_ECPublickey", btoa(JSON.stringify(JWK_ECPublickey)))
-    localStorage.setItem("JWK_ECPrivatekey", btoa(JSON.stringify(JWK_ECPrivatekey)))
+    localStorage.setItem(`${myID}_JWK_ECPublickey`, btoa(JSON.stringify(JWK_ECPublickey)))
+    localStorage.setItem(`${myID}_JWK_ECPrivatekey`, btoa(JSON.stringify(JWK_ECPrivatekey)))
     console.log("---EC key Pair stored in localStorage---")
 
     return
@@ -298,7 +298,7 @@ async function sharedPublicKey() {
 
     const payload = {
         user_id: myID,
-        public_key: localStorage.getItem("JWK_ECPublickey"),
+        public_key: localStorage.getItem(`${myID}_JWK_ECPublickey`),
     };
 
     console.log("---Share EC public key---")
@@ -327,7 +327,7 @@ async function sharedPublicKey() {
 
 $(document).ready(function() {
     // Only generate for user first time log in
-    if (localStorage.getItem("JWK_ECPrivatekey") === null || localStorage.getItem("JWK_ECPublickey") === null ) {// If no JWK_ECkey
+    if (localStorage.getItem(`${myID}_JWK_ECPrivatekey`) === null || localStorage.getItem(`${myID}_JWK_ECPublickey`) === null ) {// If no JWK_ECkey
         generateECKeyPair().then(() => {
             sharedPublicKey().then(() => {
                 console.log("Keys generate successfully and sent to server!!!")
@@ -417,11 +417,13 @@ document.getElementById('userList').addEventListener('change', event => {
     peer_id = parseInt(event.target.value, 10); // Convert selected peer_id to integer
 
     console.log(`You are now communicating with: ${userInfo[peer_id].username}`)
-    $(".right-top-peers-name")[0].innerText = `${userInfo[peer_id].username}`
+    $(".right-top-peers-name")[0].innerText = userInfo[peer_id].username
 
     // Get peer's public key then Preform key exchange
     fetchUserPublicKey().then(() => {
         keyExchange(peer_id) // Perform key exchange
+    }).catch(e => {
+        console.log(e)
     })
 
     clearChatBox();
@@ -436,6 +438,12 @@ function selectUser(id) {
     selected.dispatchEvent(new Event('change'))
 }
 
+function escapeHTML(unsafeText) {
+    let div = document.createElement('div');
+    div.textContent = unsafeText;
+    return div.innerHTML;
+}
+
 // Populate users function
 function populateUsers(users) {
     const userListDropdown = document.getElementById("userList");
@@ -444,8 +452,8 @@ function populateUsers(users) {
         userListDropdown.add(option);
         $("#userListDisplay").append(`
             <div class="user_block">
-                <input type="radio" name="user_id" id="user_${user[0]}" onclick="selectUser(${user[0]})" />
-                <label for="user_${user[0]}">${user[1]}</label>
+                <input type="radio" name="user_id" id="user_${escapeHTML(user[0])}" onclick="selectUser(${escapeHTML(user[0])})" />
+                <label for="user_${escapeHTML(user[0])}">${escapeHTML(user[1])}</label>
             </div>
         `);
     });
@@ -501,13 +509,13 @@ $(document).ready(function() {
 
 async function computeSharedSecret(){
 
-    console.log("My private key: ", localStorage.getItem("JWK_ECPrivatekey"))
+    console.log("My private key: ", localStorage.getItem(`${myID}_JWK_ECPrivatekey`))
     console.log(`${userInfo[peer_id].username} public key: `, userInfo[peer_id].publicKey)
 
     try {
         const my_privateKey = await window.crypto.subtle.importKey(
             "jwk",
-            JSON.parse(atob(localStorage.getItem("JWK_ECPrivatekey"))),
+            JSON.parse(atob(localStorage.getItem(`${myID}_JWK_ECPrivatekey`))),
             { name: "ECDH", namedCurve: "P-384", },
             true,
             ["deriveKey", "deriveBits"],
@@ -693,8 +701,8 @@ async function displayMessage(message) {
 
     const x = {
         message,
-        ECPublicKey : localStorage.getItem("JWK_ECPublickey"),
-        ECPrivateKey : localStorage.getItem("JWK_ECPrivatekey"),
+        ECPublicKey : localStorage.getItem(`${myID}_JWK_ECPublickey`),
+        ECPrivateKey : localStorage.getItem(`${myID}_JWK_ECPrivatekey`),
         [`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`] : localStorage.getItem(`CHAT_KEY_USER_${myID}_to_USER_${peer_id}`),
         [`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`] : localStorage.getItem(`CHAT_KEY_USER_${peer_id}_to_USER_${myID}`),
         [`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`] : localStorage.getItem(`CHAT_MAC_USER_${myID}_to_USER_${peer_id}`),
