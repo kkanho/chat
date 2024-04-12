@@ -38,13 +38,18 @@
                 </a>
             </div>
         </div>
-        <div class="right-top d-flex justify-content-end gap-2">
-            <button onclick="refreshKeys()" id="refreshKeysBtn" class="btn" title="Refresh Key">
-                <i class="bi bi-key-fill"></i>
-            </button>
-            <button onclick="eraseChat()" id="eraseBtn" class="btn" title="Erase chat">
-                <i class="bi bi-trash3-fill"></i>
-            </button>
+        <div class="right-top d-flex justify-content-between gap-2">
+            <div class="right-top-peers-name px-4 align-self-center">
+                <!-- peers' name -->
+            </div>
+            <div class="right-top-button-group d-flex justify-content-end gap-2">
+                <button onclick="refreshKeys()" id="refreshKeysBtn" class="btn" title="Refresh Key">
+                    <i class="bi bi-key-fill"></i>
+                </button>
+                <button onclick="eraseChat()" id="eraseBtn" class="btn" title="Erase chat">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+            </div>
         </div>
     </div>
     <div class="d-flex flex-grow-1 mb-2 overflow-hidden">
@@ -412,6 +417,7 @@ document.getElementById('userList').addEventListener('change', event => {
     peer_id = parseInt(event.target.value, 10); // Convert selected peer_id to integer
 
     console.log(`You are now communicating with: ${userInfo[peer_id].username}`)
+    $(".right-top-peers-name")[0].innerText = `${userInfo[peer_id].username}`
 
     // Get peer's public key then Preform key exchange
     fetchUserPublicKey().then(() => {

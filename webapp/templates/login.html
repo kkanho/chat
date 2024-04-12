@@ -22,9 +22,14 @@
                         <h5>
                             Step 2: Remember the following passphrase for password recovery: 
                         </h5>
-                        <h4 class="w-75 card card-body" style="text-align: justify; text-align-last: justify;">
-                            {{words}}
-                        </h4>
+                        <div class="d-flex card card-body flex-row">
+                            <h4 id="words" class="w-100 px-4" style="text-align: justify; text-align-last: justify;">
+                                {{words}}
+                            </h4>
+                            <button id="copyBtn" class="align-self-center" onclick="copyWords()">
+                                <i class="bi bi-copy"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary modalClose" data-bs-dismiss="modal">Done</button>
@@ -40,6 +45,10 @@
             $(".modalClose").on('click', function() {
                 $("#mymodal").hide()
             })
+
+            function copyWords() {
+                navigator.clipboard.writeText($("#words")[0].innerText)
+            }
         </script>
     {% endif %}
     {% if words %}
@@ -54,9 +63,14 @@
                         <h5>
                             Remember the following passphrase for the next recovery: 
                         </h5>
-                        <h4 class="w-75 card card-body" style="text-align: justify; text-align-last: justify;">
-                            {{words}}
-                        </h4>
+                        <div class="d-flex card card-body flex-row">
+                            <h4 id="words" class="w-100 px-4" style="text-align: justify; text-align-last: justify;">
+                                {{words}}
+                            </h4>
+                            <button id="copyBtn" class="align-self-center" onclick="copyWords()">
+                                <i class="bi bi-copy"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary modalClose" data-bs-dismiss="modal">Done</button>
@@ -72,6 +86,10 @@
             $(".modalClose").on('click', function() {
                 $("#mymodal").hide()
             })
+
+            function copyWords() {
+                navigator.clipboard.writeText($("#words")[0].innerText)
+            }
         </script>
     {% endif %}
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
