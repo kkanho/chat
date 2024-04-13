@@ -871,6 +871,18 @@ function eraseChat() {
     .then(data => {
         console.log('Chat erased:', data);
         clearChatBox(); // Clear the chat display
+        var arr = [];
+
+        for (var i = 0; i < localStorage.length; i++){
+            if (localStorage.key(i).substring(0,3) == `${myID}_${peer_id}`) {
+                arr.push(localStorage.key(i));
+            }
+        }
+
+        // Iterate over arr and remove the items by key
+        for (var i = 0; i < arr.length; i++) {
+            localStorage.removeItem(arr[i]);
+        }
     })
     .catch(error => {
         console.error('Error erasing chat:', error);
