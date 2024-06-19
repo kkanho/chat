@@ -1,9 +1,13 @@
 ### Chat - Group_39
 A secure chat web application
 
+# Demonstration videos:
+[![ATM demo](https://img.youtube.com/vi/Pk3HRQ5v5B4/0.jpg)](https://www.youtube.com/watch?v=Pk3HRQ5v5B4)
+
+
 ## Available Scripts
 ```sh
-#Clone this repository or unzip the repository(chat)
+#Clone this repository(chat)
 git clone https://github.com/kkanho/chat
 
 #Change to the correct directory
@@ -15,18 +19,6 @@ docker-compose up --build
 To view it in the browser,
 open [http://group-39.comp3334.xavier2dc.fr:8080/](http://group-39.comp3334.xavier2dc.fr:8080/)
 or with TLSv1.3 [https://group-39.comp3334.xavier2dc.fr:8443/](https://group-39.comp3334.xavier2dc.fr:8443/)
-
-If any errors, try to re build the server with the following command
-```sh
-docker-compose down
-
-docker-compose up --build
-```
-
-Or restart with the following command
-```sh
-docker-compose restart
-```
 
 ## Features
 
@@ -64,10 +56,12 @@ docker-compose restart
 - [x] Communications encrypted - protect data in transit with TLSv1.3
 
 To use TLS in your own browser, set the root CA(COMP3334 Project Root CA 2024) to always trust
-
+<!--- 
 - ![image](https://github.com/kkanho/chat/assets/97432128/3fa19122-46fa-4463-bc2a-c8f991a7bd00)
 - ![image](https://github.com/kkanho/chat/assets/97432128/b23cf8de-8785-46b3-b782-c267608d87ca)
-
+              -->
 ### Webapp (Front-end)
 - [x] Ability to sign up, login and logout
 - [x] zxcvbn password strength meter
+
+
