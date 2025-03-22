@@ -1,5 +1,5 @@
 Flask==3.0.2
-gunicorn==21.2.0
+gunicorn==23.0.0
 Flask-MySQLdb==2.0.0
 Flask-Session==0.6.0
 cryptography==42.0.5
